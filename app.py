@@ -53,9 +53,9 @@ def infer(
     """Generates an image from a scribble using FLUX.2 Klein 9B.
 
     NOTE: `image_b64` is the fully FLATTENED board sent by the frontend —
-    the free-hand sketch AND every sticker/asset placed on the board are
-    already composited into this single PNG, so all assets are reflected
-    in the conditioning image passed to the pipeline.
+    the free-hand sketch, every sticker/asset, every text object AND every
+    line/arrow/shape are already composited into this single PNG, so all of
+    them are reflected in the conditioning image passed to the pipeline.
     """
     gc.collect()
     torch.cuda.empty_cache()
@@ -76,7 +76,7 @@ def infer(
     final_width = max(256, min(1024, round(int(width) / 8) * 8))
     final_height = max(256, min(1024, round(int(height) / 8) * 8))
 
-    # Resize the flattened board (sketch + assets) to match the target dimensions
+    # Resize the flattened board (sketch + assets + text + shapes) to the target dimensions
     pil_image = pil_image.resize((final_width, final_height), LANCZOS).convert("RGB")
 
     if randomize_seed:
