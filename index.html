@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scribble Board Fast</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+    --bg:#000000;--panel:#0a0a0a;--panel2:#111111;--canvas:#050505;
+    --border:#1f1f1f;--border2:#2a2a2a;
+    --text:#ffffff;--muted:#b0b0b0;--dim:#707070;--faint:#404040;
+    --accent:#ffffff;--accent2:#e0e0e0;--accent3:#a0a0a0;
+    --menubar-h:48px;--statusbar-h:30px;--rail-w:52px;--inspector-w:360px;
+}
+html,body{height:100%}
+body{
+    background:var(--bg);font-family:'Inter',system-ui,-apple-system,sans-serif;
+    font-size:13px;color:var(--text);overflow:hidden;
+}
+
+/* ══ Layout grid ══ */
+.studio{
+    display:grid;height:100vh;
+    grid-template-rows:var(--menubar-h) 1fr var(--statusbar-h);
+    grid-template-columns:var(--rail-w) 1fr var(--inspector-w);
+    grid-template-areas:
+        "menubar menubar menubar"
+        "rail    workspace inspector"
+        "statusbar statusbar statusbar";
+}
+
+/* ══ Menu bar ══ */
+.menubar{
+    grid-area:menubar;display:flex;align-items:center;gap:14px;
+    background:var(--panel);border-bottom:1px solid var(--border);
+    padding:0 16px;z-index:50;
+}
+.menubar-logo{
+    width:32px;height:28px;
+    background:#ffffff; color:#000;
+    border-radius:8px;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 2px 8px rgba(255,255,255,.25);flex-shrink:0;
+    font-weight:800; font-size:16px; letter-spacing:-1px;
+}
+.menubar-title{font-size:14px;font-weight:700;letter-spacing:-.2px;white-space:nowrap}
+.menubar-title span{color:var(--dim);font-weight:500}
+.menubar-badge{
+    font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;
+    background:rgba(255,255,255,.1);color:var(--accent2);border:1px solid rgba(255,255,255,.2);
+    letter-spacing:.4px;white-space:nowrap;
+}
+.menubar-spacer{flex:1}
+.menubar-status{
+    display:flex;align-items:center;gap:7px;font-family:'JetBrains Mono',monospace;
+    font-size:11px;color:var(--dim);
+}
+.menubar-status .dot{width:7px;height:7px;border-radius:50%;background:#fff;box-shadow:0 0 6px rgba(255,255,255,.6)}
+.menubar-status .dot.off{background:#f87171;box-shadow:0 0 6px rgba(248,113,113,.5)}
+.gh-btn{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:5px 13px;border-radius:7px;text-decoration:none;
+    font-size:12px;font-weight:600;background:#fff;color:#000;
+    border:1px solid #333;
+    transition:all .15s ease;flex-shrink:0;
+}
+.gh-btn:hover{background:#e0e0e0}
+.gh-btn svg{fill:#000;width:13px;height:13px}
+
+/* ══ Left icon rail ══ */
+.rail{
+    grid-area:rail;background:var(--panel);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:4px;
+    overflow-y:auto;z-index:40;
+}
+.rail-btn{
+    width:38px;height:38px;border-radius:9px;border:1px solid transparent;
+    background:transparent;color:var(--dim);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:all .15s ease;position:relative;
+}
+.rail-btn:hover:not(:disabled){background:rgba(255,255,255,.1);color:var(--accent2);border-color:rgba(255,255,255,.25)}
+.rail-btn.active{background:rgba(255,255,255,.2);color:var(--accent2);border-color:rgba(255,255,255,.4)}
+.rail-btn:disabled{opacity:.3;cursor:not-allowed}
+.rail-btn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rail-btn svg.fill{fill:currentColor;stroke:none}
+.rail-sep{width:24px;height:1px;background:var(--border);margin:6px 0}
+.rail-label{
+    font-size:8px;font-weight:700;color:var(--faint);letter-spacing:1px;
+    text-transform:uppercase;margin:8px 0 2px;user-select:none;
+}
+
+/* Custom inputs in rail */
+.color-input-wrap {
+    width: 38px; height: 38px; border-radius: 9px;
+    border: 1px solid transparent; background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s ease;
+}
+.color-input-wrap:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.25); }
+.color-input {
+    width: 24px; height: 24px; border: none; cursor: pointer;
+    background: transparent; padding: 0;
+}
+.color-input::-webkit-color-swatch-wrapper { padding: 0; }
+.color-input::-webkit-color-swatch { border: 2px solid var(--dim); border-radius: 6px; }
+
+.size-slider-wrap {
+    width: 38px; height: 80px; display: flex; align-items: center; justify-content: center;
+}
+.size-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 80px; height: 6px; background: var(--border);
+    border-radius: 3px; outline: none; transform: rotate(-90deg);
+}
+.size-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px; background: #fff;
+    border-radius: 50%; cursor: pointer; box-shadow: 0 2px 6px rgba(255,255,255,.4);
+}
+
+/* ══ Workspace ══ */
+.workspace{
+    grid-area:workspace;display:flex;flex-direction:column;min-width:0;min-height:0;
+    background:var(--canvas);
+}
+.canvas-head{
+    display:flex;align-items:center;gap:10px;padding:8px 16px;
+    border-bottom:1px solid var(--border);background:var(--panel2);flex-shrink:0;
+}
+.seg-control{
+    display:inline-flex;background:var(--panel);border:1px solid var(--border);
+    border-radius:8px;padding:2px;gap:2px;
+}
+.seg-btn{
+    padding:4px 14px;font-size:11px;font-weight:600;color:var(--dim);
+    background:transparent;border:none;border-radius:6px;cursor:pointer;
+    font-family:'Inter',sans-serif;transition:all .15s;letter-spacing:.2px;
+}
+.seg-btn:hover:not(.active){color:var(--muted)}
+.seg-btn.active{background:rgba(255,255,255,.18);color:var(--accent2)}
+.canvas-meta{
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--faint);
+    overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1;
+}
+.canvas-actions{display:flex;align-items:center;gap:6px}
+
+.canvas-stage{
+    flex:1;position:relative;overflow:hidden;min-height:0;
+    display:flex;align-items:center;justify-content:center;
+    background:
+        repeating-conic-gradient(#0c0c0c 0% 25%, #050505 0% 50%) 0 0/24px 24px;
+    padding: 24px;
+}
+.canvas-stage.drag-over{outline:2px dashed rgba(255,255,255,.65);outline-offset:-8px}
+#draw-canvas {
+    background: #ffffff;
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    max-width: 100%;
+    max-height: 100%;
+    width: 100%;
+    height: auto;
+    box-shadow: 0 12px 48px rgba(0,0,0,.9);
+    touch-action: none;
+    display: block;
+}
+#draw-canvas.cursor-brush { cursor: crosshair; }
+#draw-canvas.cursor-select { cursor: default; }
+#draw-canvas.cursor-eraser {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 21l-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21'/%3E%3Cpath d='M22 21H7'/%3E%3Cpath d='M5 11l9 9'/%3E%3C/svg%3E") 4 14, auto;
+}
+#result-img {
+    background: #ffffff;
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    max-width: 100%;
+    max-height: 100%;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    box-shadow: 0 12px 48px rgba(0,0,0,.9);
+    display: none;
+}
+
+/* Loader */
+.modern-loader{
+    display:none;position:absolute;inset:0;background:rgba(0,0,0,.92);
+    z-index:15;flex-direction:column;align-items:center;justify-content:center;gap:16px;backdrop-filter:blur(5px);
+}
+.modern-loader.active{display:flex}
+.loader-spinner{
+    width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--accent);
+    border-radius:50%;animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-text{font-size:13px;color:var(--muted);font-weight:500;text-align:center;padding:0 16px}
+.loader-bar-track{width:220px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.loader-bar-fill{
+    height:100%;width:100%;background:linear-gradient(90deg,#ffffff,#e0e0e0,#ffffff);
+    background-size:200% 100%;animation:shimmer 1.5s ease-in-out infinite;border-radius:2px;
+    transition:width .3s ease;
+}
+.loader-bar-fill.determinate{animation:none;background:var(--accent)}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ══ Sticker / Asset panel ══ */
+.sticker-panel{
+    position:absolute;left:16px;top:16px;width:276px;
+    background:var(--panel);border:1px solid var(--border2);border-radius:12px;
+    box-shadow:0 18px 56px rgba(0,0,0,.75);
+    display:none;flex-direction:column;z-index:14;overflow:hidden;
+}
+.sticker-panel.open{display:flex}
+.sticker-panel-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 14px;border-bottom:1px solid var(--border);
+    font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);
+}
+.sticker-panel-close{
+    background:transparent;border:none;color:var(--dim);cursor:pointer;
+    font-size:17px;line-height:1;padding:2px 7px;border-radius:5px;font-family:inherit;
+}
+.sticker-panel-close:hover{color:#fff;background:rgba(255,255,255,.12)}
+.sticker-grid{
+    display:grid;grid-template-columns:repeat(6,1fr);gap:6px;
+    padding:12px;max-height:250px;overflow-y:auto;
+}
+.sticker-cell{
+    aspect-ratio:1;background:#ffffff;border:1px solid var(--border2);border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px;line-height:1;cursor:pointer;padding:0;
+    font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;
+    transition:transform .12s ease,border-color .12s ease,box-shadow .12s ease;
+}
+.sticker-cell:hover{transform:scale(1.14);border-color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.6);position:relative;z-index:1}
+.sticker-panel-foot{
+    padding:10px 12px;border-top:1px solid var(--border);
+    display:flex;flex-direction:column;gap:8px;
+}
+.sticker-upload-btn{
+    display:flex;align-items:center;justify-content:center;gap:7px;width:100%;
+    background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:8px;
+    color:var(--accent2);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;
+    padding:9px 12px;cursor:pointer;transition:all .15s;
+}
+.sticker-upload-btn:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.45)}
+.sticker-upload-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sticker-hint{
+    font-size:9.5px;color:var(--faint);line-height:1.6;
+    font-family:'JetBrains Mono',monospace;
+}
+
+/* ══ Inspector ══ */
+.inspector{
+    grid-area:inspector;background:var(--panel);border-left:1px solid var(--border);
+    display:flex;flex-direction:column;min-height:0;z-index:40;
+}
+.inspector-tabs{
+    display:flex;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.insp-tab{
+    flex:1;padding:11px 8px;font-size:11px;font-weight:700;color:var(--dim);
+    background:transparent;border:none;border-bottom:2px solid transparent;
+    cursor:pointer;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:.8px;
+    transition:all .15s;
+}
+.insp-tab:hover:not(.active){color:var(--muted)}
+.insp-tab.active{color:var(--accent2);border-bottom-color:var(--accent)}
+.insp-page{display:none;flex:1;overflow-y:auto;min-height:0;flex-direction:column}
+.insp-page.active{display:flex}
+
+.insp-section{border-bottom:1px solid var(--border);padding:14px 18px}
+.insp-section-title{
+    font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;
+    letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;
+}
+.char-count{font-size:9px;font-weight:500;color:var(--faint);font-family:'JetBrains Mono',monospace;text-transform:none;letter-spacing:0}
+.modern-textarea{
+    width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+    padding:10px 13px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);
+    resize:vertical;outline:none;min-height:64px;transition:border-color .2s;line-height:1.55;
+}
+.modern-textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,255,255,.15)}
+.modern-textarea::placeholder{color:var(--faint)}
+.modern-textarea.error-flash{
+    border-color:#ef4444!important;box-shadow:0 0 0 3px rgba(239,68,68,.2)!important;animation:shake .4s ease;
+}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}}
+
+.suggestions-wrap{display:flex;flex-wrap:wrap;gap:5px}
+.suggestion-chip{
+    display:inline-flex;align-items:center;padding:4px 11px;
+    background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);border-radius:14px;
+    color:var(--accent3);font-size:11px;font-weight:500;font-family:'Inter',sans-serif;
+    cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.suggestion-chip:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.35);color:var(--accent2)}
+.suggestion-chip.active{background:rgba(255,255,255,.25);border-color:var(--accent);color:#000}
+
+.btn-run{
+    display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+    background:#ffffff;border:none;border-radius:9px;
+    padding:12px 24px;cursor:pointer;font-size:14px;font-weight:700;font-family:'Inter',sans-serif;
+    color:#000;transition:all .2s ease;letter-spacing:-.2px;
+    box-shadow:0 4px 16px rgba(255,255,255,.15),inset 0 1px 0 rgba(255,255,255,.1);
+}
+.btn-run:hover:not(:disabled){
+    background:#e0e0e0;transform:translateY(-1px);
+    box-shadow:0 6px 24px rgba(255,255,255,.25),inset 0 1px 0 rgba(255,255,255,.15);
+}
+.btn-run:active:not(:disabled){transform:translateY(0)}
+.btn-run:disabled{opacity:.55;cursor:not-allowed}
+.btn-cancel{
+    display:flex;align-items:center;justify-content:center;gap:6px;width:100%;
+    margin-top:8px;background:transparent;border:1px solid var(--border2);border-radius:9px;
+    padding:8px 24px;cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif;
+    color:var(--muted);transition:all .15s;
+}
+.btn-cancel:hover{border-color:#ef4444;color:#ef4444;background:rgba(239,68,68,.08)}
+.run-hint{
+    text-align:center;font-size:10px;color:var(--faint);margin-top:8px;
+    font-family:'JetBrains Mono',monospace;
+}
+
+.slider-row{display:flex;align-items:center;gap:9px;min-height:26px;margin-bottom:10px}
+.slider-row:last-child{margin-bottom:0}
+.slider-row label{font-size:12px;font-weight:500;color:var(--muted);min-width:64px;flex-shrink:0}
+.slider-row input[type="range"]{
+    flex:1;-webkit-appearance:none;appearance:none;height:5px;background:var(--border);
+    border-radius:3px;outline:none;min-width:0;
+}
+.slider-row input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:14px;height:14px;background:#ffffff;
+    border-radius:50%;cursor:pointer;box-shadow:0 2px 6px rgba(255,255,255,.4);transition:transform .15s;
+}
+.slider-row input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.2)}
+.slider-row input[type="range"]::-moz-range-thumb{
+    width:14px;height:14px;background:#ffffff;
+    border-radius:50%;cursor:pointer;border:none;box-shadow:0 2px 6px rgba(255,255,255,.4);
+}
+.slider-val{
+    min-width:48px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;
+    font-weight:500;padding:2px 7px;background:var(--panel2);border:1px solid var(--border);
+    border-radius:5px;color:var(--muted);flex-shrink:0;
+}
+.dice-btn{
+    display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;
+    background:var(--panel2);border:1px solid var(--border);border-radius:5px;cursor:pointer;
+    color:var(--dim);transition:all .15s;flex-shrink:0;padding:0;
+}
+.dice-btn:hover{border-color:var(--accent);color:var(--accent2)}
+.dice-btn svg{width:13px;height:13px;fill:currentColor}
+.checkbox-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:10px}
+.checkbox-row input[type="checkbox"]{accent-color:var(--accent);width:15px;height:15px;cursor:pointer}
+.checkbox-row label{color:var(--muted);font-size:12px;cursor:pointer}
+
+.lora-native-select{
+    width:100%;background:var(--panel2);
+    border:1px solid var(--border2);border-radius:8px;
+    padding:9px 34px 9px 13px;
+    font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:var(--text);
+    outline:none;appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 11px center;
+    cursor:pointer;transition:border-color .2s;color-scheme:dark;
+}
+.lora-native-select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,255,255,.15)}
+.lora-native-select option{background:var(--panel);color:var(--text)}
+
+/* ══ Status bar ══ */
+.statusbar{
+    grid-area:statusbar;background:var(--panel);border-top:1px solid var(--border);
+    display:flex;align-items:center;gap:4px;padding:0 14px;font-size:11px;z-index:50;
+}
+.statusbar .sb-section{
+    padding:0 10px;display:flex;align-items:center;font-family:'JetBrains Mono',monospace;
+    font-size:11px;color:var(--faint);overflow:hidden;white-space:nowrap;gap:6px;
+}
+.statusbar .sb-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.sb-pill{
+    padding:2px 12px;border-radius:5px;font-weight:600;font-size:10px;
+    background:rgba(255,255,255,.1);color:var(--accent2);
+}
+.sb-pill.error{background:rgba(239,68,68,.12);color:#f87171}
+.sb-pill.done{background:rgba(255,255,255,.12);color:#fff}
+.sb-link{color:var(--faint);text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:10px}
+.sb-link:hover{color:var(--accent3)}
+
+/* ══ Toast ══ */
+.toast-notification{
+    position:fixed;top:60px;left:50%;transform:translateX(-50%) translateY(-140%);
+    z-index:9999;padding:10px 22px;border-radius:9px;font-family:'Inter',sans-serif;
+    font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;
+    box-shadow:0 8px 24px rgba(0,0,0,.5);
+    transition:transform .35s cubic-bezier(.34,1.56,.64,1),opacity .35s ease;opacity:0;pointer-events:none;
+}
+.toast-notification.visible{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto}
+.toast-notification.error{background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border:1px solid rgba(255,255,255,.15)}
+.toast-notification.warning{background:linear-gradient(135deg,#d97706,#b45309);color:#fff;border:1px solid rgba(255,255,255,.15)}
+.toast-notification.info{background:linear-gradient(135deg,#ffffff,#e0e0e0);color:#000;border:1px solid rgba(0,0,0,.15)}
+.toast-notification .toast-icon{font-size:15px;line-height:1}
+
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--border2)}
+
+@media (pointer:coarse){
+    .rail-btn{width:44px;height:44px}
+    .rail-btn svg{width:19px;height:19px}
+}
+
+@media(max-width:960px){
+    html,body{height:auto}
+    body{overflow:auto!important}
+    .studio{ display:flex;flex-direction:column;height:auto;min-height:100vh; }
+    .menubar{ flex-wrap:wrap;gap:8px;padding:10px 12px;min-height:var(--menubar-h); position:sticky;top:0; }
+    .menubar-title{font-size:13px} .menubar-status{display:none} .menubar-spacer{flex:1}
+    .gh-btn{padding:6px 10px} .gh-btn span{display:none}
+    .rail{ flex-direction:row;justify-content:flex-start;flex-wrap:nowrap; overflow-x:auto;overflow-y:hidden;border-right:none; border-bottom:1px solid var(--border);padding:6px 10px;gap:6px; }
+    .rail-sep{width:1px;height:26px;margin:0 4px;flex-shrink:0} .rail-label{display:none} .rail-btn{flex-shrink:0}
+    .workspace{min-height:0} .canvas-head{flex-wrap:wrap;gap:8px;padding:8px 12px}
+    .canvas-meta{flex-basis:100%;order:3;font-size:10px}
+    .canvas-stage{padding:12px}
+    .inspector{border-left:none;border-top:1px solid var(--border)}
+    .inspector-tabs{position:sticky;top:0;background:var(--panel);z-index:30}
+    .insp-tab{padding:13px 8px;font-size:12px} .insp-page{overflow-y:visible} .insp-section{padding:14px 16px}
+    .modern-textarea{font-size:16px} .btn-run{padding:14px 24px;font-size:15px}
+    .statusbar{flex-wrap:wrap;height:auto;min-height:var(--statusbar-h);padding:4px 10px;gap:2px}
+    .sb-link{display:none} .toast-notification{max-width:calc(100vw - 32px);font-size:12px;padding:10px 16px}
+    .sticker-panel{left:8px;top:8px;width:min(280px,calc(100vw - 40px));}
+    .sticker-grid{max-height:190px}
+}
+</style>
+</head>
+<body>
+<div class="studio">
+
+  <!-- ══ Menu bar ══ -->
+  <div class="menubar">
+    <div class="menubar-logo">S</div>
+    <div class="menubar-title">Scribble-Board <span>/ Fast</span></div>
+    <span class="menubar-badge">9B</span>
+    <span class="menubar-badge">4-STEP FAST</span>
+    <div class="menubar-spacer"></div>
+    <div class="menubar-status"><span class="dot" id="conn-dot"></span><span id="conn-text">connecting…</span></div>
+    <a href="https://github.com/PRITHIVSAKTHIUR/Scribble-Board-Fast" target="_blank" rel="noopener" class="gh-btn">
+      <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      <span>GitHub</span>
+    </a>
+  </div>
+
+  <!-- ══ Left icon rail ══ -->
+  <div class="rail">
+    <div class="rail-label">Tools</div>
+    <button class="rail-btn" id="btn-select" title="Select / Move Assets">
+      <svg viewBox="0 0 24 24"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+    </button>
+    <button class="rail-btn active" id="btn-brush" title="Brush">
+      <svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+    </button>
+    <button class="rail-btn" id="btn-eraser" title="Eraser">
+      <svg viewBox="0 0 24 24"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="8" y2="16"/></svg>
+    </button>
+    <div class="color-input-wrap">
+        <input type="color" id="color-picker" class="color-input" value="#000000" title="Brush Color">
+    </div>
+
+    <div class="size-slider-wrap">
+        <input type="range" id="size-slider" class="size-slider" min="1" max="50" value="5" title="Brush Size">
+    </div>
+
+    <div class="rail-sep"></div>
+
+    <button class="rail-btn" id="btn-undo" title="Undo">
+      <svg viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg>
+    </button>
+    <button class="rail-btn" id="btn-redo" title="Redo">
+      <svg viewBox="0 0 24 24"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 15-6.7L21 13"/></svg>
+    </button>
+    <button class="rail-btn" id="btn-clear" title="Clear All">
+      <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    </button>
+
+    <div class="rail-sep"></div>
+    <div class="rail-label">Assets</div>
+    <button class="rail-btn" id="btn-stickers" title="Stickers &amp; Assets">
+      <svg viewBox="0 0 24 24"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3Z"/><path d="M14 3v4a2 2 0 0 0 2 2h4"/><path d="M8 13h.01"/><path d="M16 13h.01"/><path d="M10 16s.8 1 2 1c1.3 0 2-1 2-1"/></svg>
+    </button>
+
+    <div class="rail-sep"></div>
+    <div class="rail-label">Result</div>
+    <button class="rail-btn" id="btn-download" title="Download Result" disabled>
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </button>
+  </div>
+
+  <!-- ══ Workspace ══ -->
+  <div class="workspace">
+    <div class="canvas-head">
+      <div class="seg-control">
+        <button class="seg-btn active" id="seg-input">Sketch</button>
+        <button class="seg-btn" id="seg-result">Result</button>
+      </div>
+      <div class="canvas-meta" id="canvas-meta">Draw a sketch to begin</div>
+      <div class="canvas-actions"></div>
+    </div>
+
+    <div class="canvas-stage" id="canvas-stage">
+      <div class="modern-loader" id="output-loader">
+        <div class="loader-spinner"></div>
+        <div class="loader-text" id="loader-text">Processing image&hellip;</div>
+        <div class="loader-bar-track"><div class="loader-bar-fill" id="loader-bar-fill"></div></div>
+      </div>
+
+      <!-- Sticker / asset panel -->
+      <div class="sticker-panel" id="sticker-panel">
+        <div class="sticker-panel-head">
+          <span>Stickers &amp; Assets</span>
+          <button class="sticker-panel-close" id="sticker-panel-close" title="Close">&times;</button>
+        </div>
+        <div class="sticker-grid" id="sticker-grid"></div>
+        <div class="sticker-panel-foot">
+          <button class="sticker-upload-btn" id="sticker-upload-btn" type="button">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload Image
+          </button>
+          <input type="file" id="sticker-file-input" accept="image/*" multiple hidden>
+          <div class="sticker-hint">click to add &middot; drag to move &middot; drag corners to resize (&#8679; = keep ratio) &middot; &times; / Delete removes &middot; drop files or paste images onto the board</div>
+        </div>
+      </div>
+
+      <canvas id="draw-canvas" width="1024" height="576" class="cursor-brush" style="aspect-ratio: 16 / 9;"></canvas>
+      <img id="result-img" alt="Result Image" style="display:none; aspect-ratio: 16 / 9;">
+    </div>
+  </div>
+
+  <!-- ══ Inspector ══ -->
+  <div class="inspector">
+    <div class="inspector-tabs">
+      <button class="insp-tab active" id="tab-edit">Generate</button>
+    </div>
+
+    <!-- Edit page -->
+    <div class="insp-page active" id="page-edit">
+      <div class="insp-section">
+        <div class="insp-section-title"><span>Prompt</span><span class="char-count" id="char-count">0</span></div>
+        <textarea id="custom-prompt-input" class="modern-textarea" rows="4"
+                  placeholder="Describe what you want to generate from your sketch..."></textarea>
+      </div>
+
+      <div class="insp-section">
+        <div class="insp-section-title"><span>Quick Prompts</span></div>
+        <div class="suggestions-wrap" id="suggestions-wrap"></div>
+      </div>
+
+      <div class="insp-section">
+        <div class="insp-section-title"><span>Aspect Ratio</span></div>
+        <select id="custom-ratio" class="lora-native-select">
+            <option value="16:9" selected>16:9 (Landscape)</option>
+            <option value="9:16">9:16 (Portrait)</option>
+            <option value="1:1">1:1 (Square)</option>
+            <option value="4:3">4:3 (Standard)</option>
+            <option value="3:4">3:4 (Portrait)</option>
+        </select>
+      </div>
+
+      <div class="insp-section">
+        <button id="custom-run-btn" class="btn-run">
+          <span id="run-btn-label">Generate Image</span>
+        </button>
+        <button id="custom-cancel-btn" class="btn-cancel" style="display:none;">Cancel</button>
+        <div class="run-hint">⌘/Ctrl + Enter</div>
+      </div>
+
+      <div class="insp-section">
+        <div class="insp-section-title"><span>Advanced</span></div>
+        <div class="slider-row">
+          <label>Seed</label>
+          <input type="range" id="custom-seed" min="0" max="2147483647" step="1" value="0">
+          <span class="slider-val" id="custom-seed-val">0</span>
+          <button class="dice-btn" id="dice-btn" title="Random seed">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM7.5 18c-.83 0-1.5-.67-1.5-1.5S6.67 15 7.5 15s1.5.67 1.5 1.5S8.33 18 7.5 18zm0-9C6.67 9 6 8.33 6 7.5S6.67 6 7.5 6 9 6.67 9 7.5 8.33 9 7.5 9zm4.5 4.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4.5 4.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm0-9c-.83 0-1.5-.67-1.5-1.5S15.67 6 16.5 6s1.5.67 1.5 1.5S17.33 9 16.5 9z"/></svg>
+          </button>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="custom-randomize" checked>
+          <label for="custom-randomize">Randomize seed</label>
+        </div>
+        <div class="slider-row">
+          <label>Guidance</label>
+          <input type="range" id="custom-guidance" min="1" max="10" step="0.1" value="1.0">
+          <span class="slider-val" id="custom-guidance-val">1.0</span>
+        </div>
+        <div class="slider-row">
+          <label>Steps</label>
+          <input type="range" id="custom-steps" min="1" max="50" step="1" value="4">
+          <span class="slider-val" id="custom-steps-val">4</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Status bar ══ -->
+  <div class="statusbar">
+    <div class="sb-section" id="sb-image-count">Sketch Ready</div>
+    <div class="sb-right">
+      <a class="sb-link" href="https://huggingface.co/black-forest-labs/FLUX.2-klein-9B" target="_blank" rel="noopener">FLUX.2-klein-9B</a>
+      <span class="sb-pill" id="sb-status">Ready</span>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js";
+
+/* ── DOM refs ── */
+const canvas = document.getElementById('draw-canvas');
+const ctx = canvas.getContext('2d');
+const stage = document.getElementById('canvas-stage');
+const resultImg = document.getElementById('result-img');
+const btnDownload = document.getElementById('btn-download');
+
+const btnSelect = document.getElementById('btn-select');
+const btnBrush = document.getElementById('btn-brush');
+const btnEraser = document.getElementById('btn-eraser');
+const btnUndo = document.getElementById('btn-undo');
+const btnRedo = document.getElementById('btn-redo');
+const btnClear = document.getElementById('btn-clear');
+const colorPicker = document.getElementById('color-picker');
+const sizeSlider = document.getElementById('size-slider');
+
+const btnStickers = document.getElementById('btn-stickers');
+const stickerPanel = document.getElementById('sticker-panel');
+const stickerGrid = document.getElementById('sticker-grid');
+const panelCloseBtn = document.getElementById('sticker-panel-close');
+const uploadBtn = document.getElementById('sticker-upload-btn');
+const fileInput = document.getElementById('sticker-file-input');
+
+const promptInput = document.getElementById('custom-prompt-input');
+const charCount = document.getElementById('char-count');
+const runBtn = document.getElementById('custom-run-btn');
+const runBtnLabel = document.getElementById('run-btn-label');
+const cancelBtn = document.getElementById('custom-cancel-btn');
+const sbStatus = document.getElementById('sb-status');
+const sbImageCount = document.getElementById('sb-image-count');
+const loader = document.getElementById('output-loader');
+const loaderText = document.getElementById('loader-text');
+const loaderFill = document.getElementById('loader-bar-fill');
+const seedSlider = document.getElementById('custom-seed');
+const seedVal = document.getElementById('custom-seed-val');
+const canvasMeta = document.getElementById('canvas-meta');
+const segInput = document.getElementById('seg-input');
+const segResult = document.getElementById('seg-result');
+const connDot = document.getElementById('conn-dot');
+const connText = document.getElementById('conn-text');
+const ratioSelect = document.getElementById('custom-ratio');
+
+/* ── State ── */
+// Offscreen layer that holds ONLY the free-hand strokes.
+// The visible canvas is a live composite: strokes + every sticker/asset.
+// Because stickers are rendered INTO the canvas bitmap, canvas.toDataURL()
+// (what we send to the backend) always contains the whole board.
+const sketchCanvas = document.createElement('canvas');
+const sketchCtx = sketchCanvas.getContext('2d');
+
+let currentTool = 'brush';
+let brushColor = '#000000';
+let brushSize = 5;
+
+let stickers = [];              // {x, y, w, h, img}
+let selectedSticker = null;
+
+let dragMode = null;            // null | 'draw' | 'move' | 'resize'
+let dragSticker = null;
+let dragStart = null;
+let dragOffX = 0, dragOffY = 0;
+let dragChanged = false;
+let lastX = 0, lastY = 0;
+
+let undoStack = [];
+let redoStack = [];
+const MAX_HISTORY = 20;
+const MIN_SIZE = 20;
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+function loadImage(src){
+    return new Promise((res, rej) => {
+        const im = new Image();
+        im.onload = () => res(im);
+        im.onerror = rej;
+        im.src = src;
+    });
+}
+function readFileAsDataURL(file){
+    return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+    });
+}
+
+/* ── Canvas core ── */
+function resetSketchLayer(){
+    sketchCanvas.width = canvas.width;
+    sketchCanvas.height = canvas.height;
+    sketchCtx.fillStyle = '#ffffff';
+    sketchCtx.fillRect(0, 0, sketchCanvas.width, sketchCanvas.height);
+    sketchCtx.lineCap = 'round';
+    sketchCtx.lineJoin = 'round';
+}
+
+function handleSize(){ return Math.max(10, Math.round(canvas.width / 85)); }
+function corners(s){
+    return {
+        nw: [s.x, s.y],
+        ne: [s.x + s.w, s.y],
+        sw: [s.x, s.y + s.h],
+        se: [s.x + s.w, s.y + s.h]
+    };
+}
+function deleteBtnPos(s){
+    const r = Math.max(9, Math.round(canvas.width / 110));
+    return {
+        r,
+        x: clamp(s.x + s.w, r + 3, canvas.width - r - 3),
+        y: Math.max(s.y - r - 10, r + 3)
+    };
+}
+
+/* Composite render: white bg + stroke layer + all stickers (+ selection UI) */
+function renderComposite(){
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(sketchCanvas, 0, 0);
+    for (const s of stickers) ctx.drawImage(s.img, s.x, s.y, s.w, s.h);
+    if (selectedSticker) drawSelectionUI(selectedSticker);
+}
+
+function drawSelectionUI(s){
+    const lw = Math.max(1.5, canvas.width / 640);
+    ctx.save();
+    ctx.strokeStyle = '#2563eb';
+    ctx.lineWidth = lw;
+    ctx.setLineDash([7, 5]);
+    ctx.strokeRect(s.x, s.y, s.w, s.h);
+    ctx.setLineDash([]);
+    const hs = handleSize();
+    ctx.fillStyle = '#ffffff';
+    for (const [hx, hy] of Object.values(corners(s))){
+        ctx.beginPath();
+        ctx.rect(hx - hs / 2, hy - hs / 2, hs, hs);
+        ctx.fill();
+        ctx.stroke();
+    }
+    // red delete button above the top-right corner
+    const d = deleteBtnPos(s);
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.max(1.5, d.r * 0.22);
+    const k = d.r * 0.42;
+    ctx.beginPath();
+    ctx.moveTo(d.x - k, d.y - k); ctx.lineTo(d.x + k, d.y + k);
+    ctx.moveTo(d.x + k, d.y - k); ctx.lineTo(d.x - k, d.y + k);
+    ctx.stroke();
+    ctx.restore();
+}
+
+/* ── Hit testing ── */
+function hitHandle(pos, s){
+    const hs = handleSize();
+    const slack = hs / 2 + 6;
+    for (const [name, [hx, hy]] of Object.entries(corners(s))){
+        if (Math.abs(pos.x - hx) <= slack && Math.abs(pos.y - hy) <= slack) return name;
+    }
+    return null;
+}
+function hitDeleteBtn(pos, s){
+    const d = deleteBtnPos(s);
+    const dx = pos.x - d.x, dy = pos.y - d.y;
+    return (dx * dx + dy * dy) <= (d.r + 5) * (d.r + 5);
+}
+function hitSticker(pos){
+    for (let i = stickers.length - 1; i >= 0; i--){
+        const s = stickers[i];
+        if (pos.x >= s.x && pos.x <= s.x + s.w && pos.y >= s.y && pos.y <= s.y + s.h) return s;
+    }
+    return null;
+}
+
+/* ── Pointer / pen / touch interaction (unified pointer events) ── */
+function getPos(e){
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+}
+function clientToCanvas(cx, cy){
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return { x: (cx - rect.left) * scaleX, y: (cy - rect.top) * scaleY };
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+    if (dragMode) return; // one interaction at a time
+    e.preventDefault();
+    try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+    const pos = getPos(e);
+
+    // 1) resize handles / delete button of the selected sticker
+    if (selectedSticker){
+        const h = hitHandle(pos, selectedSticker);
+        if (h){ beginResize(h, pos); return; }
+        if (hitDeleteBtn(pos, selectedSticker)){ removeSticker(selectedSticker); return; }
+    }
+    // 2) grab any sticker under the pointer — works in EVERY tool mode,
+    //    so assets are always drag & movable
+    const st = hitSticker(pos);
+    if (st){ selectSticker(st); beginMove(st, pos); return; }
+    // 3) empty area
+    if (currentTool === 'select'){ selectSticker(null); return; }
+    beginStroke(pos);
+});
+
+canvas.addEventListener('pointermove', (e) => {
+    if (!dragMode){ updateHover(getPos(e)); return; }
+    const pos = getPos(e);
+    if (dragMode === 'draw') extendStroke(pos);
+    else if (dragMode === 'move') updateMove(pos);
+    else if (dragMode === 'resize') updateResize(pos, e);
+});
+
+function endDrag(){
+    if (!dragMode) return;
+    dragMode = null; dragSticker = null; dragStart = null;
+    canvas.style.cursor = '';
+    if (dragChanged){ saveState(); updateBoardStatus(); dragChanged = false; }
+}
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', endDrag);
+
+function updateHover(pos){
+    let cur = '';
+    if (selectedSticker){
+        const h = hitHandle(pos, selectedSticker);
+        if (h) cur = (h === 'nw' || h === 'se') ? 'nwse-resize' : 'nesw-resize';
+        else if (hitDeleteBtn(pos, selectedSticker)) cur = 'pointer';
+    }
+    if (!cur && hitSticker(pos)) cur = 'move';
+    canvas.style.cursor = cur; // '' falls back to the tool cursor class
+}
+
+/* Free-hand strokes (drawn on the stroke layer, composited live) */
+function strokeColor(){ return currentTool === 'eraser' ? '#ffffff' : brushColor; }
+function strokeWidth(){ return currentTool === 'eraser' ? brushSize * 2 : brushSize; }
+
+function beginStroke(pos){
+    dragMode = 'draw';
+    dragChanged = true;
+    lastX = pos.x; lastY = pos.y;
+    sketchCtx.strokeStyle = strokeColor();
+    sketchCtx.lineWidth = strokeWidth();
+    sketchCtx.beginPath();
+    sketchCtx.moveTo(lastX, lastY);
+    sketchCtx.lineTo(lastX + 0.1, lastY + 0.1);
+    sketchCtx.stroke();
+    renderComposite();
+}
+function extendStroke(pos){
+    sketchCtx.strokeStyle = strokeColor();
+    sketchCtx.lineWidth = strokeWidth();
+    sketchCtx.beginPath();
+    sketchCtx.moveTo(lastX, lastY);
+    sketchCtx.lineTo(pos.x, pos.y);
+    sketchCtx.stroke();
+    lastX = pos.x; lastY = pos.y;
+    renderComposite();
+}
+
+/* Sticker move */
+function beginMove(st, pos){
+    dragMode = 'move';
+    dragSticker = st;
+    dragChanged = false;
+    dragOffX = pos.x - st.x;
+    dragOffY = pos.y - st.y;
+    canvas.style.cursor = 'grabbing';
+}
+function updateMove(pos){
+    const st = dragSticker;
+    if (!st) return;
+    st.x = clamp(Math.round(pos.x - dragOffX), 0, canvas.width - st.w);
+    st.y = clamp(Math.round(pos.y - dragOffY), 0, canvas.height - st.h);
+    dragChanged = true;
+    renderComposite();
+}
+
+/* Sticker resize (opposite corner stays anchored; Shift keeps aspect ratio) */
+function beginResize(handle, pos){
+    const s = selectedSticker;
+    dragMode = 'resize';
+    dragSticker = s;
+    dragChanged = false;
+    const fx = (handle === 'nw' || handle === 'sw') ? s.x + s.w : s.x;
+    const fy = (handle === 'nw' || handle === 'ne') ? s.y + s.h : s.y;
+    dragStart = { fx, fy, sw: s.w, sh: s.h };
+    canvas.style.cursor = (handle === 'nw' || handle === 'se') ? 'nwse-resize' : 'nesw-resize';
+}
+function updateResize(pos, e){
+    const s = dragSticker;
+    if (!s || !dragStart) return;
+    const { fx, fy, sw, sh } = dragStart;
+    let x1, y1, x2, y2;
+    if (e.shiftKey && sw > 0 && sh > 0){
+        const a = sw / sh;
+        let w = Math.abs(pos.x - fx), h = Math.abs(pos.y - fy);
+        if (w / a >= h) h = w / a; else w = h * a;
+        w = Math.max(w, MIN_SIZE); h = Math.max(h, MIN_SIZE);
+        const sx = pos.x < fx ? -1 : 1, sy = pos.y < fy ? -1 : 1;
+        x1 = Math.min(fx, fx + sx * w); x2 = Math.max(fx, fx + sx * w);
+        y1 = Math.min(fy, fy + sy * h); y2 = Math.max(fy, fy + sy * h);
+    } else {
+        x1 = Math.min(pos.x, fx); x2 = Math.max(pos.x, fx);
+        y1 = Math.min(pos.y, fy); y2 = Math.max(pos.y, fy);
+    }
+    // keep min size anchored at the fixed corner
+    if (x2 - x1 < MIN_SIZE){ if (fx <= x1) x2 = x1 + MIN_SIZE; else x1 = x2 - MIN_SIZE; }
+    if (y2 - y1 < MIN_SIZE){ if (fy <= y1) y2 = y1 + MIN_SIZE; else y1 = y2 - MIN_SIZE; }
+    // keep inside the board
+    x1 = clamp(x1, 0, canvas.width - MIN_SIZE);
+    x2 = clamp(x2, x1 + MIN_SIZE, canvas.width);
+    y1 = clamp(y1, 0, canvas.height - MIN_SIZE);
+    y2 = clamp(y2, y1 + MIN_SIZE, canvas.height);
+    s.x = Math.round(x1); s.y = Math.round(y1);
+    s.w = Math.round(x2 - x1); s.h = Math.round(y2 - y1);
+    dragChanged = true;
+    renderComposite();
+}
+
+/* ── Sticker operations ── */
+function selectSticker(st){
+    if (st){
+        const i = stickers.indexOf(st);
+        if (i >= 0 && i < stickers.length - 1){ stickers.splice(i, 1); stickers.push(st); } // bring to front
+    }
+    selectedSticker = st || null;
+    renderComposite();
+}
+function removeSticker(st){
+    const i = stickers.indexOf(st);
+    if (i < 0) return;
+    stickers.splice(i, 1);
+    if (selectedSticker === st) selectedSticker = null;
+    saveState();
+    renderComposite();
+    updateBoardStatus();
+    showToast('Asset removed', 'info');
+}
+function updateBoardStatus(){
+    const n = stickers.length;
+    sbImageCount.textContent = n ? `${n} asset${n > 1 ? 's' : ''} on board` : 'Sketch Ready';
+}
+
+function normalizeStickerSource(img){
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    if (!w || !h) return img;
+    const MAXDIM = 512;
+    if (Math.max(w, h) <= MAXDIM) return img;
+    const sc = MAXDIM / Math.max(w, h);
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w * sc));
+    c.height = Math.max(1, Math.round(h * sc));
+    const cc = c.getContext('2d');
+    cc.imageSmoothingEnabled = true;
+    cc.imageSmoothingQuality = 'high';
+    cc.drawImage(img, 0, 0, c.width, c.height);
+    return c;
+}
+
+function addSticker(src, cx, cy){
+    const sw = src.width || src.naturalWidth;
+    const sh = src.height || src.naturalHeight;
+    if (!sw || !sh){ showToast('Could not read the image', 'error'); return; }
+    const target = Math.min(canvas.width, canvas.height) * 0.35;
+    const sc = target / Math.max(sw, sh);
+    const w = clamp(Math.round(sw * sc), 24, canvas.width);
+    const h = clamp(Math.round(sh * sc), 24, canvas.height);
+    let x, y;
+    if (cx == null){
+        x = (canvas.width - w) / 2 + (Math.random() * 80 - 40);
+        y = (canvas.height - h) / 2 + (Math.random() * 80 - 40);
+    } else {
+        x = cx - w / 2;
+        y = cy - h / 2;
+    }
+    x = clamp(Math.round(x), 0, canvas.width - w);
+    y = clamp(Math.round(y), 0, canvas.height - h);
+    const st = { x, y, w, h, img: src };
+    stickers.push(st);
+    selectSticker(st);
+    setTool('select');
+    saveState();
+    updateBoardStatus();
+    renderComposite();
+    return st;
+}
+
+/* ── Built-in emoji sticker library (rendered locally, trimmed to content) ── */
+const STICKER_EMOJIS = [
+    '😀','😎','🤔','🤖','👽','💀','🙈',
+    '🐱','🐶','🐰','🦊','🐻','🐼','🐨','🦁','🐸','🦄','🐢','🦋','🐝','🐞','🐦','🦉',
+    '🌵','🌲','🌳','🌴','🍀','🌻','🌹','🌷','🌈','☀️','☁️','🌙','⭐','✨','🔥','💧','❄️',
+    '❤️','👑','💎','🎩','🏆','🎵','🎸','🍕','🍩','🍎','☕','🎈','🎁','⚽','🏀','🚗','🚀','✈️','⛵','🏠','🏰'
+];
+
+function emojiToStickerImage(emoji){
+    const size = 200;
+    const c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    const cc = c.getContext('2d');
+    cc.font = `${Math.floor(size * 0.78)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+    cc.textAlign = 'center';
+    cc.textBaseline = 'middle';
+    cc.fillText(emoji, size / 2, size / 2 + size * 0.03);
+    try {
+        const data = cc.getImageData(0, 0, size, size).data;
+        let minX = size, minY = size, maxX = -1, maxY = -1;
+        for (let y = 0; y < size; y++){
+            for (let x = 0; x < size; x++){
+                if (data[(y * size + x) * 4 + 3] > 8){
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+            }
+        }
+        if (maxX >= 0 && (maxX - minX) > 6 && (maxY - minY) > 6){
+            const w = maxX - minX + 1, h = maxY - minY + 1;
+            const out = document.createElement('canvas');
+            out.width = w; out.height = h;
+            out.getContext('2d').drawImage(c, minX, minY, w, h, 0, 0, w, h);
+            return out;
+        }
+    } catch (err) { console.warn('emoji trim failed', err); }
+    return c;
+}
+
+STICKER_EMOJIS.forEach(em => {
+    const b = document.createElement('button');
+    b.className = 'sticker-cell';
+    b.type = 'button';
+    b.title = 'Add ' + em;
+    b.textContent = em;
+    b.addEventListener('click', () => {
+        const img = emojiToStickerImage(em);
+        addSticker(img);
+    });
+    stickerGrid.appendChild(b);
+});
+
+/* ── Panel / upload / drag-drop / paste ── */
+btnStickers.addEventListener('click', () => stickerPanel.classList.toggle('open'));
+panelCloseBtn.addEventListener('click', () => stickerPanel.classList.remove('open'));
+uploadBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', (e) => {
+    handleFiles(e.target.files);
+    fileInput.value = '';
+});
+
+async function handleFiles(fileList, cx, cy){
+    const files = Array.from(fileList || []);
+    let added = 0;
+    for (const f of files){
+        if (!f.type || !f.type.startsWith('image/')) continue;
+        if (f.size > 15 * 1024 * 1024){
+            showToast(`${f.name} is too large (max 15 MB)`, 'warning');
+            continue;
+        }
+        try {
+            const dataUrl = await readFileAsDataURL(f);
+            const img = await loadImage(dataUrl);
+            addSticker(normalizeStickerSource(img), cx, cy);
+            added++;
+        } catch (err){
+            console.warn('asset load failed', err);
+        }
+    }
+    if (added) showToast(`Added ${added} asset${added > 1 ? 's' : ''} to the board`, 'info');
+    else if (files.length) showToast('No supported image files found', 'warning');
+}
+
+stage.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    stage.classList.add('drag-over');
+});
+stage.addEventListener('dragleave', () => stage.classList.remove('drag-over'));
+stage.addEventListener('drop', (e) => {
+    e.preventDefault();
+    stage.classList.remove('drag-over');
+    const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+    if (!files.length) return;
+    const pos = clientToCanvas(e.clientX, e.clientY);
+    const inside = pos.x >= 0 && pos.x <= canvas.width && pos.y >= 0 && pos.y <= canvas.height;
+    handleFiles(files, inside ? pos.x : null, inside ? pos.y : null);
+});
+
+window.addEventListener('paste', (e) => {
+    const items = (e.clipboardData && e.clipboardData.items) || [];
+    const files = [];
+    for (let i = 0; i < items.length; i++){
+        const it = items[i];
+        if (it.kind === 'file' && it.type && it.type.startsWith('image/')){
+            const f = it.getAsFile();
+            if (f) files.push(f);
+        }
+    }
+    if (files.length){
+        e.preventDefault();
+        handleFiles(files);
+    }
+});
+
+/* ── History (undo/redo) — snapshots include sketch AND stickers ── */
+function snapshot(){
+    return {
+        sketch: sketchCanvas.toDataURL(),
+        stickers: stickers.map(s => ({ x: s.x, y: s.y, w: s.w, h: s.h, img: s.img }))
+    };
+}
+function saveState(){
+    if (undoStack.length >= MAX_HISTORY) undoStack.shift();
+    undoStack.push(snapshot());
+    redoStack = [];
+}
+function restoreSketch(dataUrl){
+    return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+            sketchCtx.fillStyle = '#ffffff';
+            sketchCtx.fillRect(0, 0, sketchCanvas.width, sketchCanvas.height);
+            sketchCtx.drawImage(img, 0, 0);
+            sketchCtx.lineCap = 'round';
+            sketchCtx.lineJoin = 'round';
+            resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = dataUrl;
+    });
+}
+async function restoreState(snap){
+    await restoreSketch(snap.sketch);
+    stickers = snap.stickers.map(s => ({ ...s }));
+    selectedSticker = null;
+    renderComposite();
+    updateBoardStatus();
+}
+
+btnUndo.addEventListener('click', async () => {
+    if (undoStack.length > 1){
+        redoStack.push(undoStack.pop());
+        await restoreState(undoStack[undoStack.length - 1]);
+    }
+});
+btnRedo.addEventListener('click', async () => {
+    if (redoStack.length > 0){
+        const next = redoStack.pop();
+        undoStack.push(next);
+        await restoreState(next);
+    }
+});
+
+/* ── Tools ── */
+function setTool(tool){
+    currentTool = tool;
+    btnSelect.classList.toggle('active', tool === 'select');
+    btnBrush.classList.toggle('active', tool === 'brush');
+    btnEraser.classList.toggle('active', tool === 'eraser');
+    canvas.classList.toggle('cursor-select', tool === 'select');
+    canvas.classList.toggle('cursor-brush', tool === 'brush');
+    canvas.classList.toggle('cursor-eraser', tool === 'eraser');
+}
+btnSelect.addEventListener('click', () => setTool('select'));
+btnBrush.addEventListener('click', () => setTool('brush'));
+btnEraser.addEventListener('click', () => setTool('eraser'));
+colorPicker.addEventListener('input', (e) => {
+    brushColor = e.target.value;
+    setTool('brush');
+});
+sizeSlider.addEventListener('input', (e) => {
+    brushSize = parseInt(e.target.value);
+});
+
+btnClear.addEventListener('click', () => {
+    resetSketchLayer();
+    stickers = [];
+    selectedSticker = null;
+    saveState();
+    renderComposite();
+    updateBoardStatus();
+    showToast('Board cleared', 'info');
+});
+
+btnDownload.addEventListener('click', () => {
+    if (resultImg.src && resultImg.src !== window.location.href){
+        const a = document.createElement('a');
+        a.href = resultImg.src;
+        a.download = 'scribble_board_result.png';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    }
+});
+
+/* ── Aspect Ratio Logic ── */
+const dims = {
+    "16:9": [1024, 576],
+    "9:16": [576, 1024],
+    "1:1": [1024, 1024],
+    "4:3": [1024, 768],
+    "3:4": [768, 1024]
+};
+
+function updateCanvasRatio(ratio){
+    const [w, h] = dims[ratio];
+    const oldW = canvas.width, oldH = canvas.height;
+    canvas.width = w;
+    canvas.height = h;
+    canvas.style.aspectRatio = ratio.replace(":", " / ");
+    resultImg.style.aspectRatio = ratio.replace(":", " / ");
+    resetSketchLayer(); // sketch is reset on ratio change (original behaviour)
+    // carry stickers over, rescaled to the new board size
+    if (oldW > 0 && oldH > 0 && stickers.length){
+        const sx = w / oldW, sy = h / oldH;
+        stickers = stickers.map(s => {
+            const nw = Math.min(w, Math.max(24, Math.round(s.w * sx)));
+            const nh = Math.min(h, Math.max(24, Math.round(s.h * sy)));
+            return {
+                img: s.img,
+                x: clamp(Math.round(s.x * sx), 0, w - nw),
+                y: clamp(Math.round(s.y * sy), 0, h - nh),
+                w: nw, h: nh
+            };
+        });
+    }
+    selectedSticker = null;
+    undoStack = [];
+    redoStack = [];
+    saveState();
+    renderComposite();
+    updateBoardStatus();
+}
+
+ratioSelect.addEventListener('change', (e) => {
+    updateCanvasRatio(e.target.value);
+    showToast(`Canvas set to ${e.target.value} — sketch cleared`, 'info');
+});
+
+/* ── UI Toggles ── */
+function setViewMode(mode){
+    if (mode === 'result'){
+        canvas.style.display = 'none';
+        resultImg.style.display = 'block';
+        segResult.classList.add('active');
+        segInput.classList.remove('active');
+        canvasMeta.textContent = 'Generated Result';
+    } else {
+        canvas.style.display = 'block';
+        resultImg.style.display = 'none';
+        segResult.classList.remove('active');
+        segInput.classList.add('active');
+        canvasMeta.textContent = 'Draw a sketch to begin';
+    }
+}
+segInput.addEventListener('click', () => setViewMode('input'));
+segResult.addEventListener('click', () => setViewMode('result'));
+
+/* ── Quick Prompts ── */
+const SUGGESTIONS = [
+    ['Realistic Photo', 'a highly detailed, realistic photograph'],
+    ['Anime Style', 'anime style illustration, vibrant colors, sharp lines'],
+    ['3D Render', '3D render, octane render, cinema4d, soft lighting'],
+    ['Oil Painting', 'traditional oil painting, visible brush strokes, canvas texture'],
+    ['Cyberpunk', 'cyberpunk style, neon lights, dark moody atmosphere, futuristic'],
+    ['Watercolor', 'watercolor painting, soft edges, pastel colors, artistic']
+];
+
+const suggWrap = document.getElementById('suggestions-wrap');
+SUGGESTIONS.forEach(([label, prompt]) => {
+    const chip = document.createElement('button');
+    chip.className = 'suggestion-chip';
+    chip.textContent = label;
+    chip.addEventListener('click', () => {
+        promptInput.value = prompt;
+        updateCharCount();
+        suggWrap.querySelectorAll('.suggestion-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+    });
+    suggWrap.appendChild(chip);
+});
+
+function updateCharCount(){ charCount.textContent = promptInput.value.length; }
+promptInput.addEventListener('input', () => {
+    updateCharCount();
+    suggWrap.querySelectorAll('.suggestion-chip').forEach(c => c.classList.remove('active'));
+});
+updateCharCount();
+
+/* ── Toast & Loader ── */
+let toastTimer = null;
+function showToast(message, type){
+    let toast = document.getElementById('app-toast');
+    if (!toast){
+        toast = document.createElement('div');
+        toast.id = 'app-toast';
+        toast.className = 'toast-notification';
+        toast.innerHTML = '<span class="toast-icon"></span><span class="toast-text"></span>';
+        document.body.appendChild(toast);
+    }
+    const icon = toast.querySelector('.toast-icon');
+    const text = toast.querySelector('.toast-text');
+    toast.className = 'toast-notification ' + (type || 'error');
+    icon.textContent = type === 'warning' ? '⚠' : type === 'info' ? 'ℹ' : '✗';
+    text.textContent = message;
+    if (toastTimer) clearTimeout(toastTimer);
+    void toast.offsetWidth;
+    toast.classList.add('visible');
+    toastTimer = setTimeout(() => toast.classList.remove('visible'), 3500);
+}
+
+function setStatus(text, cls){
+    sbStatus.textContent = text;
+    sbStatus.className = 'sb-pill' + (cls ? ' ' + cls : '');
+}
+function showLoader(text){
+    loaderText.textContent = text || 'Processing image…';
+    loaderFill.classList.remove('determinate');
+    loaderFill.style.width = '100%';
+    loader.classList.add('active');
+    setStatus('Processing…');
+}
+function setLoaderProgress(text, frac){
+    loaderText.textContent = text;
+    if (frac != null && frac >= 0 && frac <= 1){
+        loaderFill.classList.add('determinate');
+        loaderFill.style.width = Math.max(4, Math.round(frac * 100)) + '%';
+    }
+}
+function hideLoader(statusText, cls){
+    loader.classList.remove('active');
+    setStatus(statusText || 'Done', cls || 'done');
+}
+
+/* ── Sliders ── */
+function bindSlider(id){
+    const slider = document.getElementById(id);
+    const valSpan = document.getElementById(id + '-val');
+    slider.addEventListener('input', () => { valSpan.textContent = slider.value; });
+}
+bindSlider('custom-seed');
+bindSlider('custom-guidance');
+bindSlider('custom-steps');
+
+document.getElementById('dice-btn').addEventListener('click', () => {
+    const s = Math.floor(Math.random() * 2147483647);
+    seedSlider.value = s; seedVal.textContent = s;
+});
+
+/* ── Init board ── */
+resetSketchLayer();
+renderComposite();
+saveState();
+updateBoardStatus();
+
+/* ── Backend connection ── */
+let client = null;
+try {
+    client = await Client.connect(window.location.origin);
+    setStatus('Ready');
+    connDot.style.background = '#fff';
+    connText.textContent = 'connected';
+} catch (e) {
+    setStatus('Offline', 'error');
+    connDot.style.background = '#f87171';
+    connText.textContent = 'offline';
+    showToast('Could not connect to the backend API', 'error');
+}
+
+/* ── Run Generation ── */
+let running = false;
+let currentJob = null;
+
+function setRunningUI(on){
+    running = on;
+    runBtn.disabled = on;
+    runBtnLabel.textContent = on ? 'Generating…' : 'Generate Image';
+    cancelBtn.style.display = on ? 'flex' : 'none';
+}
+
+async function runEdit(){
+    if (running) return;
+
+    const promptVal = promptInput.value.trim();
+    if (!promptVal){ showToast('Please enter a prompt', 'warning'); return; }
+
+    setRunningUI(true);
+    setViewMode('result');
+    showLoader('Submitting to queue…');
+    btnDownload.disabled = true;
+
+    /* ★★★ THE FIX ★★★
+       Flatten the board before export: stickers/assets are rendered INTO the
+       canvas bitmap, so toDataURL() captures the WHOLE board (sketch + assets).
+       We only need to clear the selection overlay first. */
+    selectedSticker = null;
+    renderComposite();
+    const sketch_b64 = canvas.toDataURL('image/png');
+
+    const selectedRatio = ratioSelect.value;
+    const [targetW, targetH] = dims[selectedRatio];
+
+    const payload = {
+        image_b64: sketch_b64,
+        prompt: promptVal,
+        seed: parseInt(seedSlider.value) || 0,
+        randomize_seed: document.getElementById('custom-randomize').checked,
+        width: targetW,
+        height: targetH,
+        steps: parseInt(document.getElementById('custom-steps').value),
+        guidance_scale: parseFloat(document.getElementById('custom-guidance').value),
+    };
+
+    try {
+        currentJob = client.submit('/generate_image', payload);
+        for await (const msg of currentJob){
+            if (msg.type === 'status'){
+                if (msg.status === 'pending'){
+                    const pos = (msg.position != null && msg.position >= 0)
+                        ? 'In queue — position ' + (msg.position + 1) + (msg.queue_size ? ' of ' + msg.queue_size : '')
+                        : 'Waiting in queue…';
+                    setLoaderProgress(pos, null);
+                    setStatus('Queued');
+                } else if (msg.status === 'generating'){
+                    setStatus('Processing…');
+                    const pd = msg.progress_data;
+                    if (pd && pd.length > 0){
+                        const p = pd[pd.length - 1];
+                        if (p.index != null && p.length){
+                            const pct = Math.round((p.index / p.length) * 100);
+                            setLoaderProgress('Generating… ' + p.index + '/' + p.length + ' (' + pct + '%)', p.index / p.length);
+                        } else {
+                            setLoaderProgress('Generating…', null);
+                        }
+                    } else {
+                        setLoaderProgress('Generating image…', null);
+                    }
+                } else if (msg.status === 'error'){
+                    throw new Error(msg.message || 'Generation failed');
+                }
+            } else if (msg.type === 'data'){
+                const out = msg.data && msg.data[0];
+                if (out && out.image){
+                    resultImg.src = out.image;
+                    if (out.seed != null){
+                        seedSlider.value = out.seed;
+                        seedVal.textContent = out.seed;
+                    }
+                    hideLoader('Done', 'done');
+                    showToast('Image generated successfully', 'info');
+                    btnDownload.disabled = false;
+                } else {
+                    hideLoader('Done', 'done');
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Edit error:', e);
+        hideLoader('Error', 'error');
+        const msg = (e && e.message) ? e.message : 'Generation failed';
+        showToast(msg.length > 120 ? msg.slice(0, 120) + '…' : msg, 'error');
+        setViewMode('input');
+    } finally {
+        setRunningUI(false);
+        currentJob = null;
+    }
+}
+
+runBtn.addEventListener('click', runEdit);
+
+cancelBtn.addEventListener('click', async () => {
+    if (currentJob){
+        try { await currentJob.cancel(); } catch (e) { console.warn('Cancel error:', e); }
+        currentJob = null;
+    }
+    setRunningUI(false);
+    hideLoader('Cancelled');
+    showToast('Generation cancelled', 'warning');
+    setViewMode('input');
+});
+
+document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter'){
+        e.preventDefault();
+        runEdit();
+        return;
+    }
+    // Delete / Backspace removes the selected asset (but never while typing)
+    if ((e.key === 'Delete' || e.key === 'Backspace') && selectedSticker){
+        const tag = (document.activeElement && document.activeElement.tagName) || '';
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT'){
+            e.preventDefault();
+            removeSticker(selectedSticker);
+        }
+    }
+});
+</script>
+</body>
+</html>
