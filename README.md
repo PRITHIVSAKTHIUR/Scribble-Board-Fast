@@ -4,6 +4,17 @@ Scribble-Board-Fast is an interactive, high-performance sketch-to-image synthesi
 
 The system is deployed using a FastAPI application via `gradio.Server` hosting a responsive, dark-mode single-page application (SPA). Features include custom brush dynamics, an asset/sticker placement and manipulation engine, aspect-ratio snapping, history rollback, and instant API generation pipelines.
 
+<img width="1920" height="889" alt="Screenshot From 2026-09-12 15-20-20" src="https://github.com/user-attachments/assets/2d55df6f-9974-487b-8197-1868a5c9e76c" />
+
+
+```txt
+prompt/
+
+3D render, octane render,
+cinema4d, soft lighting
+```
+<img width="1920" height="889" alt="Screenshot From 2026-09-12 15-22-01" src="https://github.com/user-attachments/assets/bf4c2972-95db-4dac-b9e9-43f2c9e2d85a" />
+
 ### **Key Features**
 
 * **Interactive Sketch-to-Image Pipeline:** Converts freehand drawings and composite layouts directly into detailed photographic, artistic, or 3D images via `FLUX.2-klein-9B`.
