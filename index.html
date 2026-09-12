@@ -167,6 +167,7 @@ body{
 }
 #draw-canvas.cursor-brush { cursor: crosshair; }
 #draw-canvas.cursor-select { cursor: default; }
+#draw-canvas.cursor-shape { cursor: crosshair; }
 #draw-canvas.cursor-eraser {
     cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 21l-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21'/%3E%3Cpath d='M22 21H7'/%3E%3Cpath d='M5 11l9 9'/%3E%3C/svg%3E") 4 14, auto;
 }
@@ -204,7 +205,7 @@ body{
 .loader-bar-fill.determinate{animation:none;background:var(--accent)}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
-/* ══ Sticker / Asset panel ══ */
+/* ══ Floating panels (shared frame) ══ */
 .sticker-panel{
     position:absolute;left:16px;top:16px;width:276px;
     background:var(--panel);border:1px solid var(--border2);border-radius:12px;
@@ -249,6 +250,81 @@ body{
 .sticker-hint{
     font-size:9.5px;color:var(--faint);line-height:1.6;
     font-family:'JetBrains Mono',monospace;
+}
+
+/* ══ Shape panel ══ */
+.shape-grid{
+    display:grid;grid-template-columns:repeat(6,1fr);gap:6px;
+    padding:12px;max-height:250px;overflow-y:auto;
+}
+.shape-cell{
+    aspect-ratio:1;background:#ffffff;border:1px solid var(--border2);border-radius:8px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;
+    transition:transform .12s ease,border-color .12s ease,box-shadow .12s ease,background .12s ease;
+}
+.shape-cell svg{width:20px;height:20px;fill:none;stroke:#111;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.shape-cell:hover{transform:scale(1.12);border-color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.6);position:relative;z-index:1}
+.shape-cell.active{background:#2563eb;border-color:#2563eb}
+.shape-cell.active svg{stroke:#fff}
+
+/* ══ Text panel ══ */
+.text-panel{
+    position:absolute;right:16px;top:16px;width:252px;
+    background:var(--panel);border:1px solid var(--border2);border-radius:12px;
+    box-shadow:0 18px 56px rgba(0,0,0,.75);
+    display:none;flex-direction:column;z-index:14;overflow:hidden;
+}
+.text-panel.open{display:flex}
+.text-panel-body{
+    padding:12px;display:flex;flex-direction:column;gap:10px;
+}
+.text-panel-input{
+    width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+    padding:9px 11px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);
+    resize:vertical;outline:none;min-height:58px;line-height:1.5;
+}
+.text-panel-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,255,255,.15)}
+.text-panel-input::placeholder{color:var(--faint)}
+.text-panel .lora-native-select{width:100%}
+.text-style-row{display:flex;align-items:center;gap:8px}
+.text-style-cluster{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.toggle-btn{
+    width:28px;height:28px;border-radius:6px;border:1px solid var(--border2);
+    background:var(--panel2);color:var(--muted);cursor:pointer;
+    font-family:'Inter',sans-serif;font-size:13px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;
+}
+.toggle-btn:hover{border-color:var(--accent);color:var(--accent2)}
+.toggle-btn.active{background:#fff;color:#000;border-color:#fff}
+.text-color-input{
+    width:28px;height:28px;border:1px solid var(--border2);border-radius:6px;
+    background:var(--panel2);cursor:pointer;padding:2px;
+}
+.text-color-input::-webkit-color-swatch-wrapper{padding:0}
+.text-color-input::-webkit-color-swatch{border:none;border-radius:4px}
+.mini-range{
+    -webkit-appearance:none;appearance:none;height:5px;background:var(--border);
+    border-radius:3px;outline:none;flex:1;min-width:0;
+}
+.mini-range::-webkit-slider-thumb{
+    -webkit-appearance:none;width:14px;height:14px;background:#ffffff;
+    border-radius:50%;cursor:pointer;box-shadow:0 2px 6px rgba(255,255,255,.4);
+}
+.mini-range::-moz-range-thumb{
+    width:14px;height:14px;background:#ffffff;border-radius:50%;cursor:pointer;
+    border:none;box-shadow:0 2px 6px rgba(255,255,255,.4);
+}
+
+/* ══ Inline text editor (opens on double-click to EDIT board text) ══ */
+.inline-text-editor{
+    position:absolute;z-index:16;display:none;
+    background:rgba(255,255,255,.88);
+    border:1.5px dashed #2563eb;border-radius:4px;
+    outline:none;color:#000;padding:2px 6px;
+    font-family:'Inter',sans-serif;font-size:16px;line-height:1.3;
+    white-space:pre;overflow:hidden;resize:none;
+    min-width:60px;min-height:28px;
+    box-shadow:0 6px 24px rgba(0,0,0,.45);
 }
 
 /* ══ Inspector ══ */
@@ -431,6 +507,8 @@ body{
     .sb-link{display:none} .toast-notification{max-width:calc(100vw - 32px);font-size:12px;padding:10px 16px}
     .sticker-panel{left:8px;top:8px;width:min(280px,calc(100vw - 40px));}
     .sticker-grid{max-height:190px}
+    .shape-grid{max-height:190px}
+    .text-panel{right:8px;top:8px;width:min(252px,calc(100vw - 40px));}
 }
 </style>
 </head>
@@ -454,7 +532,7 @@ body{
   <!-- ══ Left icon rail ══ -->
   <div class="rail">
     <div class="rail-label">Tools</div>
-    <button class="rail-btn" id="btn-select" title="Select / Move Assets">
+    <button class="rail-btn" id="btn-select" title="Select / Move Objects">
       <svg viewBox="0 0 24 24"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
     </button>
     <button class="rail-btn active" id="btn-brush" title="Brush">
@@ -487,6 +565,12 @@ body{
     <div class="rail-label">Assets</div>
     <button class="rail-btn" id="btn-stickers" title="Stickers &amp; Assets">
       <svg viewBox="0 0 24 24"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3Z"/><path d="M14 3v4a2 2 0 0 0 2 2h4"/><path d="M8 13h.01"/><path d="M16 13h.01"/><path d="M10 16s.8 1 2 1c1.3 0 2-1 2-1"/></svg>
+    </button>
+    <button class="rail-btn" id="btn-shapes" title="Shapes &amp; Lines">
+      <svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="8" height="8" rx="1"/><circle cx="16.5" cy="16.5" r="4.5"/></svg>
+    </button>
+    <button class="rail-btn" id="btn-text-panel" title="Text — type or paste text">
+      <svg viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/></svg>
     </button>
 
     <div class="rail-sep"></div>
@@ -530,6 +614,64 @@ body{
           <div class="sticker-hint">click to add &middot; drag to move &middot; drag corners to resize (&#8679; = keep ratio) &middot; &times; / Delete removes &middot; drop files or paste images onto the board</div>
         </div>
       </div>
+
+      <!-- Shapes & lines panel -->
+      <div class="sticker-panel" id="shape-panel">
+        <div class="sticker-panel-head">
+          <span>Shapes &amp; Lines</span>
+          <button class="sticker-panel-close" id="shape-panel-close" title="Close">&times;</button>
+        </div>
+        <div class="shape-grid" id="shape-grid"></div>
+        <div class="sticker-panel-foot">
+          <div class="text-style-row">
+            <div class="text-style-cluster">
+              <input type="color" id="shape-stroke" class="text-color-input" value="#111111" title="Stroke color">
+              <input type="color" id="shape-fill" class="text-color-input" value="#ffffff" title="Fill color">
+              <button id="shape-fill-toggle" class="toggle-btn" type="button" title="Fill on / off">F</button>
+            </div>
+            <input type="range" id="shape-width" class="mini-range" min="1" max="24" step="1" value="4" title="Stroke width">
+            <span class="slider-val" id="shape-width-val">4</span>
+          </div>
+          <div class="sticker-hint">pick a shape, then <b>drag on the board</b> to draw it (click = default size; arrows point along your drag) &middot; drag to move &middot; corners resize (&#8679; = ratio) &middot; select a shape and restyle it live</div>
+        </div>
+      </div>
+
+      <!-- Text panel (the ONLY way to add text now) -->
+      <div class="text-panel" id="text-panel">
+        <div class="sticker-panel-head">
+          <span>Text</span>
+          <button class="sticker-panel-close" id="text-panel-close" title="Close">&times;</button>
+        </div>
+        <div class="text-panel-body">
+          <textarea id="text-input" class="text-panel-input" rows="3"
+                    placeholder="Type or paste text here…"></textarea>
+          <select id="text-font" class="lora-native-select" title="Font">
+            <option value="Inter, system-ui, sans-serif" selected>Inter (Sans)</option>
+            <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+            <option value="Georgia, 'Times New Roman', serif">Serif</option>
+            <option value="'Comic Sans MS', 'Comic Sans', 'Chalkboard SE', cursive">Cursive / Comic</option>
+            <option value="Impact, 'Arial Black', sans-serif">Impact</option>
+          </select>
+          <div class="text-style-row">
+            <div class="text-style-cluster">
+              <button id="text-bold" class="toggle-btn" type="button" title="Bold">B</button>
+              <button id="text-italic" class="toggle-btn" type="button" title="Italic"><i>I</i></button>
+              <input type="color" id="text-color" class="text-color-input" value="#111111" title="Text color">
+            </div>
+            <input type="range" id="text-size" class="mini-range" min="12" max="200" step="1" value="48" title="Font size">
+            <span class="slider-val" id="text-size-val">48</span>
+          </div>
+          <button id="text-add-btn" class="sticker-upload-btn" type="button">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            Add to Board
+          </button>
+          <div class="sticker-hint">style your text, then <b>Add to Board</b> &middot; drag to move &middot; corners resize &middot; <b>double-click text on the board to edit</b> (Enter commits, &#8679;Enter = new line, Esc cancels) &middot; &#8984;/Ctrl+V pastes clipboard text onto the board</div>
+        </div>
+      </div>
+
+      <!-- Inline editor: opens ONLY on double-click of an existing board text -->
+      <textarea id="inline-text-editor" class="inline-text-editor" rows="1" wrap="off"
+                spellcheck="false" style="display:none;"></textarea>
 
       <canvas id="draw-canvas" width="1024" height="576" class="cursor-brush" style="aspect-ratio: 16 / 9;"></canvas>
       <img id="result-img" alt="Result Image" style="display:none; aspect-ratio: 16 / 9;">
@@ -639,6 +781,29 @@ const panelCloseBtn = document.getElementById('sticker-panel-close');
 const uploadBtn = document.getElementById('sticker-upload-btn');
 const fileInput = document.getElementById('sticker-file-input');
 
+const btnShapes = document.getElementById('btn-shapes');
+const shapePanel = document.getElementById('shape-panel');
+const shapePanelClose = document.getElementById('shape-panel-close');
+const shapeGridEl = document.getElementById('shape-grid');
+const shapeStrokeInput = document.getElementById('shape-stroke');
+const shapeFillInput = document.getElementById('shape-fill');
+const shapeFillToggle = document.getElementById('shape-fill-toggle');
+const shapeWidthSlider = document.getElementById('shape-width');
+const shapeWidthVal = document.getElementById('shape-width-val');
+
+const btnTextPanel = document.getElementById('btn-text-panel');
+const textPanel = document.getElementById('text-panel');
+const textPanelClose = document.getElementById('text-panel-close');
+const textInput = document.getElementById('text-input');
+const textFontSel = document.getElementById('text-font');
+const textSizeSlider = document.getElementById('text-size');
+const textSizeVal = document.getElementById('text-size-val');
+const textColorInput = document.getElementById('text-color');
+const textBoldBtn = document.getElementById('text-bold');
+const textItalicBtn = document.getElementById('text-italic');
+const textAddBtn = document.getElementById('text-add-btn');
+const ed = document.getElementById('inline-text-editor');
+
 const promptInput = document.getElementById('custom-prompt-input');
 const charCount = document.getElementById('char-count');
 const runBtn = document.getElementById('custom-run-btn');
@@ -659,10 +824,10 @@ const connText = document.getElementById('conn-text');
 const ratioSelect = document.getElementById('custom-ratio');
 
 /* ── State ── */
-// Offscreen layer that holds ONLY the free-hand strokes.
-// The visible canvas is a live composite: strokes + every sticker/asset.
-// Because stickers are rendered INTO the canvas bitmap, canvas.toDataURL()
-// (what we send to the backend) always contains the whole board.
+// Offscreen layer holding ONLY the free-hand strokes. The visible canvas is a
+// live composite: strokes + stickers + text + shapes. Because everything is
+// rendered INTO the canvas bitmap, canvas.toDataURL() (what we send to the
+// backend) always contains the WHOLE board.
 const sketchCanvas = document.createElement('canvas');
 const sketchCtx = sketchCanvas.getContext('2d');
 
@@ -670,20 +835,29 @@ let currentTool = 'brush';
 let brushColor = '#000000';
 let brushSize = 5;
 
-let stickers = [];              // {x, y, w, h, img}
+let stickers = [];              // all board objects: images, text, shapes
 let selectedSticker = null;
 
-let dragMode = null;            // null | 'draw' | 'move' | 'resize'
+let dragMode = null;            // null | 'draw' | 'move' | 'resize' | 'shapedraw'
 let dragSticker = null;
 let dragStart = null;
 let dragOffX = 0, dragOffY = 0;
 let dragChanged = false;
 let lastX = 0, lastY = 0;
 
+let editorSticker = null;       // text object currently being edited (or null)
+let editorStyle = null;         // live style object for the open editor
+let pendingTextCommit = null;   // in-flight commit promise
+
+let shapeKind = null;           // currently selected shape kind
+let pendingShape = null;        // in-progress shape while dragging
+let shapeStyleDirty = false;
+
 let undoStack = [];
 let redoStack = [];
 const MAX_HISTORY = 20;
 const MIN_SIZE = 20;
+const LINE_KINDS = new Set(['line', 'arrow', 'double', 'dashed']);
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -732,7 +906,159 @@ function deleteBtnPos(s){
     };
 }
 
-/* Composite render: white bg + stroke layer + all stickers (+ selection UI) */
+/* ════════════════════════════════════════════════════════════════════════
+   SHAPE RENDERING — shapes are vector objects re-rendered into the canvas
+   bitmap on every composite, so they are flattened into the exported PNG.
+   ════════════════════════════════════════════════════════════════════════ */
+
+function makeShape(kind, x, y, w, h, flip, rev, style){
+    return { kind, x, y, w, h, flip: !!flip, rev: !!rev, style: { ...style } };
+}
+
+/* Directional endpoints of a line/arrow, honouring the drawn direction */
+function shapeEndpoints(s){
+    const a = s.flip ? { x: s.x + s.w, y: s.y } : { x: s.x, y: s.y };
+    const b = s.flip ? { x: s.x, y: s.y + s.h } : { x: s.x + s.w, y: s.y + s.h };
+    return s.rev ? [b, a] : [a, b];
+}
+
+function roundedRectPath(c, x, y, w, h, r){
+    r = Math.min(r, w / 2, h / 2);
+    c.moveTo(x + r, y);
+    c.lineTo(x + w - r, y);
+    c.quadraticCurveTo(x + w, y, x + w, y + r);
+    c.lineTo(x + w, y + h - r);
+    c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    c.lineTo(x + r, y + h);
+    c.quadraticCurveTo(x, y + h, x, y + h - r);
+    c.lineTo(x, y + r);
+    c.quadraticCurveTo(x, y, x + r, y);
+    c.closePath();
+}
+
+function starPath(c, x, y, w, h){
+    const cx = x + w / 2, cy = y + h / 2;
+    const ox = w / 2, oy = h / 2;
+    const ix = ox * 0.42, iy = oy * 0.42;
+    c.moveTo(cx, cy - oy);
+    for (let i = 0; i < 5; i++){
+        const ia = (-90 + i * 72 + 36) * Math.PI / 180;
+        const oa = (-90 + (i + 1) * 72) * Math.PI / 180;
+        c.lineTo(cx + Math.cos(ia) * ix, cy + Math.sin(ia) * iy);
+        c.lineTo(cx + Math.cos(oa) * ox, cy + Math.sin(oa) * oy);
+    }
+    c.closePath();
+}
+
+function heartPath(c, x, y, w, h){
+    c.moveTo(x + w * 0.5, y + h * 0.98);
+    c.bezierCurveTo(x + w * 0.02, y + h * 0.68, x - w * 0.05, y + h * 0.28, x + w * 0.22, y + h * 0.10);
+    c.bezierCurveTo(x + w * 0.38, y,               x + w * 0.5,  y + h * 0.14, x + w * 0.5,  y + h * 0.26);
+    c.bezierCurveTo(x + w * 0.5,  y + h * 0.14,    x + w * 0.62, y,             x + w * 0.78, y + h * 0.10);
+    c.bezierCurveTo(x + w * 1.05, y + h * 0.28,    x + w * 0.98, y + h * 0.68, x + w * 0.5,  y + h * 0.98);
+    c.closePath();
+}
+
+function bubblePath(c, x, y, w, h){
+    const bodyH = h * 0.78;
+    const r = Math.min(w, bodyH) * 0.25;
+    c.moveTo(x + r, y);
+    c.lineTo(x + w - r, y);
+    c.quadraticCurveTo(x + w, y, x + w, y + r);
+    c.lineTo(x + w, y + bodyH - r);
+    c.quadraticCurveTo(x + w, y + bodyH, x + w - r, y + bodyH);
+    c.lineTo(x + w * 0.40, y + bodyH);
+    c.lineTo(x + w * 0.26, y + h);          // tail tip
+    c.lineTo(x + w * 0.22, y + bodyH);
+    c.lineTo(x + r, y + bodyH);
+    c.quadraticCurveTo(x, y + bodyH, x, y + bodyH - r);
+    c.lineTo(x, y + r);
+    c.quadraticCurveTo(x, y, x + r, y);
+    c.closePath();
+}
+
+function buildShapePath(c, s){
+    const x = s.x, y = s.y, w = s.w, h = s.h;
+    switch (s.kind){
+        case 'rect':     c.rect(x, y, w, h); break;
+        case 'round':    roundedRectPath(c, x, y, w, h, Math.min(w, h) * 0.2); break;
+        case 'ellipse':  c.ellipse(x + w / 2, y + h / 2, Math.max(0.5, w / 2), Math.max(0.5, h / 2), 0, 0, Math.PI * 2); break;
+        case 'triangle': c.moveTo(x + w / 2, y); c.lineTo(x + w, y + h); c.lineTo(x, y + h); c.closePath(); break;
+        case 'diamond':  c.moveTo(x + w / 2, y); c.lineTo(x + w, y + h / 2); c.lineTo(x + w / 2, y + h); c.lineTo(x, y + h / 2); c.closePath(); break;
+        case 'hexagon': {
+            const m = w * 0.25;
+            c.moveTo(x + m, y); c.lineTo(x + w - m, y); c.lineTo(x + w, y + h / 2);
+            c.lineTo(x + w - m, y + h); c.lineTo(x + m, y + h); c.lineTo(x, y + h / 2);
+            c.closePath(); break;
+        }
+        case 'star':   starPath(c, x, y, w, h); break;
+        case 'heart':  heartPath(c, x, y, w, h); break;
+        case 'bubble': bubblePath(c, x, y, w, h); break;
+    }
+}
+
+function arrowHead(c, tx, ty, ang, size){
+    const L = size, W = L * 0.5;
+    c.beginPath();
+    c.moveTo(tx, ty);
+    c.lineTo(tx - Math.cos(ang - 0.45) * L, ty - Math.sin(ang - 0.45) * L);
+    c.lineTo(tx - Math.cos(ang + 0.45) * L, ty - Math.sin(ang + 0.45) * L);
+    c.closePath();
+    c.fill();
+}
+
+function drawShapeObject(c, s){
+    const st = s.style || {};
+    const stroke = st.stroke || '#000000';
+    const lw = Math.max(1, st.strokeWidth || 4);
+    c.save();
+    c.lineJoin = 'round';
+    c.lineCap = 'round';
+    if (LINE_KINDS.has(s.kind)){
+        const [a, b] = shapeEndpoints(s);
+        const ang = Math.atan2(b.y - a.y, b.x - a.x);
+        const hasHead = (s.kind === 'arrow' || s.kind === 'double');
+        const headLen = hasHead ? Math.max(10, lw * 3.2) : 0;
+        let ax = a.x, ay = a.y, bx = b.x, by = b.y;
+        if (headLen){
+            const L = Math.hypot(b.x - a.x, b.y - a.y);
+            if (L > headLen * 1.6){
+                bx -= Math.cos(ang) * headLen * 0.8;
+                by -= Math.sin(ang) * headLen * 0.8;
+                if (s.kind === 'double'){ ax += Math.cos(ang) * headLen * 0.8; ay += Math.sin(ang) * headLen * 0.8; }
+            }
+        }
+        c.strokeStyle = stroke;
+        c.lineWidth = lw;
+        if (s.kind === 'dashed') c.setLineDash([Math.max(6, lw * 2.4), Math.max(5, lw * 2)]);
+        c.beginPath();
+        c.moveTo(ax, ay);
+        c.lineTo(bx, by);
+        c.stroke();
+        c.setLineDash([]);
+        if (hasHead){
+            c.fillStyle = stroke;
+            arrowHead(c, b.x, b.y, ang, headLen);
+            if (s.kind === 'double') arrowHead(c, a.x, a.y, ang + Math.PI, headLen);
+        }
+    } else {
+        c.beginPath();
+        buildShapePath(c, s);
+        if (st.filled){ c.fillStyle = st.fill || '#ffffff'; c.fill(); }
+        c.strokeStyle = stroke;
+        c.lineWidth = lw;
+        c.stroke();
+    }
+    c.restore();
+}
+
+function drawBoardObject(c, s){
+    if (s.kind) drawShapeObject(c, s);
+    else c.drawImage(s.img, s.x, s.y, s.w, s.h);
+}
+
+/* Composite render: white bg + stroke layer + all objects (+ selection UI).
+   The object currently being text-edited is hidden while its editor is open. */
 function renderComposite(){
     ctx.setLineDash([]);
     ctx.fillStyle = '#ffffff';
@@ -740,8 +1066,12 @@ function renderComposite(){
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(sketchCanvas, 0, 0);
-    for (const s of stickers) ctx.drawImage(s.img, s.x, s.y, s.w, s.h);
-    if (selectedSticker) drawSelectionUI(selectedSticker);
+    for (const s of stickers){
+        if (s === editorSticker) continue;
+        drawBoardObject(ctx, s);
+    }
+    if (pendingShape) drawBoardObject(ctx, pendingShape);   // live draw preview
+    if (selectedSticker && selectedSticker !== editorSticker) drawSelectionUI(selectedSticker);
 }
 
 function drawSelectionUI(s){
@@ -790,10 +1120,24 @@ function hitDeleteBtn(pos, s){
     const dx = pos.x - d.x, dy = pos.y - d.y;
     return (dx * dx + dy * dy) <= (d.r + 5) * (d.r + 5);
 }
+function distToSegment(px, py, x1, y1, x2, y2){
+    const dx = x2 - x1, dy = y2 - y1;
+    const len2 = dx * dx + dy * dy;
+    let t = len2 ? ((px - x1) * dx + (py - y1) * dy) / len2 : 0;
+    t = clamp(t, 0, 1);
+    return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
 function hitSticker(pos){
     for (let i = stickers.length - 1; i >= 0; i--){
         const s = stickers[i];
-        if (pos.x >= s.x && pos.x <= s.x + s.w && pos.y >= s.y && pos.y <= s.y + s.h) return s;
+        if (s === editorSticker) continue;
+        if (s.kind && LINE_KINDS.has(s.kind)){
+            // precise test for lines/arrows so thin lines don't block the board
+            const [a, b] = shapeEndpoints(s);
+            if (distToSegment(pos.x, pos.y, a.x, a.y, b.x, b.y) <= Math.max(10, (s.style.strokeWidth || 4) / 2 + 6)) return s;
+        } else if (pos.x >= s.x && pos.x <= s.x + s.w && pos.y >= s.y && pos.y <= s.y + s.h){
+            return s;
+        }
     }
     return null;
 }
@@ -813,42 +1157,73 @@ function clientToCanvas(cx, cy){
 }
 
 canvas.addEventListener('pointerdown', (e) => {
-    if (dragMode) return; // one interaction at a time
+    if (dragMode) return;                       // one interaction at a time
+    if (isEditorOpen()){                        // an open text editor wins: commit + swallow
+        commitTextEditor();
+        return;
+    }
     e.preventDefault();
     try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
     const pos = getPos(e);
 
-    // 1) resize handles / delete button of the selected sticker
+    // 1) resize handles / delete button of the selected object
     if (selectedSticker){
         const h = hitHandle(pos, selectedSticker);
         if (h){ beginResize(h, pos); return; }
         if (hitDeleteBtn(pos, selectedSticker)){ removeSticker(selectedSticker); return; }
     }
-    // 2) grab any sticker under the pointer — works in EVERY tool mode,
-    //    so assets are always drag & movable
+    // 2) shape tool: grab an existing object, or drag out a new shape
+    if (currentTool === 'shape'){
+        const st = hitSticker(pos);
+        if (st){ selectSticker(st); beginMove(st, pos); return; }
+        beginShapeDraw(pos);
+        return;
+    }
+    // 3) grab any object under the pointer — works in EVERY tool mode
     const st = hitSticker(pos);
     if (st){ selectSticker(st); beginMove(st, pos); return; }
-    // 3) empty area
+    // 4) empty area
     if (currentTool === 'select'){ selectSticker(null); return; }
     beginStroke(pos);
 });
 
 canvas.addEventListener('pointermove', (e) => {
+    if (isEditorOpen()) return;
     if (!dragMode){ updateHover(getPos(e)); return; }
     const pos = getPos(e);
     if (dragMode === 'draw') extendStroke(pos);
     else if (dragMode === 'move') updateMove(pos);
     else if (dragMode === 'resize') updateResize(pos, e);
+    else if (dragMode === 'shapedraw') updatePendingShape(pos);
 });
 
 function endDrag(){
     if (!dragMode) return;
+    const mode = dragMode;
+    const start = dragStart;
     dragMode = null; dragSticker = null; dragStart = null;
     canvas.style.cursor = '';
+    if (mode === 'shapedraw'){
+        commitPendingShape(start);
+        pendingShape = null;
+        renderComposite();
+        return;
+    }
     if (dragChanged){ saveState(); updateBoardStatus(); dragChanged = false; }
 }
 canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
+
+// double-click text on the board → edit it inline (works in every tool mode)
+canvas.addEventListener('dblclick', (e) => {
+    if (isEditorOpen()) return;
+    const pos = getPos(e);
+    const st = hitSticker(pos);
+    if (st && st.textMeta){
+        endDrag();
+        openTextEditor(pos.x, pos.y, st);
+    }
+});
 
 function updateHover(pos){
     let cur = '';
@@ -857,7 +1232,10 @@ function updateHover(pos){
         if (h) cur = (h === 'nw' || h === 'se') ? 'nwse-resize' : 'nesw-resize';
         else if (hitDeleteBtn(pos, selectedSticker)) cur = 'pointer';
     }
-    if (!cur && hitSticker(pos)) cur = 'move';
+    if (!cur){
+        const st = hitSticker(pos);
+        if (st) cur = st.textMeta ? 'text' : 'move';   // I-beam hints at double-click editing
+    }
     canvas.style.cursor = cur; // '' falls back to the tool cursor class
 }
 
@@ -888,7 +1266,7 @@ function extendStroke(pos){
     renderComposite();
 }
 
-/* Sticker move */
+/* Object move */
 function beginMove(st, pos){
     dragMode = 'move';
     dragSticker = st;
@@ -906,7 +1284,7 @@ function updateMove(pos){
     renderComposite();
 }
 
-/* Sticker resize (opposite corner stays anchored; Shift keeps aspect ratio) */
+/* Object resize (opposite corner stays anchored; Shift keeps aspect ratio) */
 function beginResize(handle, pos){
     const s = selectedSticker;
     dragMode = 'resize';
@@ -921,12 +1299,14 @@ function updateResize(pos, e){
     const s = dragSticker;
     if (!s || !dragStart) return;
     const { fx, fy, sw, sh } = dragStart;
+    const isLine = s.kind && LINE_KINDS.has(s.kind);
+    const minD = isLine ? 0 : MIN_SIZE;   // lines may be perfectly horizontal/vertical
     let x1, y1, x2, y2;
-    if (e.shiftKey && sw > 0 && sh > 0){
+    if (e.shiftKey && !isLine && sw > 0 && sh > 0){
         const a = sw / sh;
         let w = Math.abs(pos.x - fx), h = Math.abs(pos.y - fy);
         if (w / a >= h) h = w / a; else w = h * a;
-        w = Math.max(w, MIN_SIZE); h = Math.max(h, MIN_SIZE);
+        w = Math.max(w, minD); h = Math.max(h, minD);
         const sx = pos.x < fx ? -1 : 1, sy = pos.y < fy ? -1 : 1;
         x1 = Math.min(fx, fx + sx * w); x2 = Math.max(fx, fx + sx * w);
         y1 = Math.min(fy, fy + sy * h); y2 = Math.max(fy, fy + sy * h);
@@ -935,24 +1315,76 @@ function updateResize(pos, e){
         y1 = Math.min(pos.y, fy); y2 = Math.max(pos.y, fy);
     }
     // keep min size anchored at the fixed corner
-    if (x2 - x1 < MIN_SIZE){ if (fx <= x1) x2 = x1 + MIN_SIZE; else x1 = x2 - MIN_SIZE; }
-    if (y2 - y1 < MIN_SIZE){ if (fy <= y1) y2 = y1 + MIN_SIZE; else y1 = y2 - MIN_SIZE; }
+    if (x2 - x1 < minD){ if (fx <= x1) x2 = x1 + minD; else x1 = x2 - minD; }
+    if (y2 - y1 < minD){ if (fy <= y1) y2 = y1 + minD; else y1 = y2 - minD; }
     // keep inside the board
-    x1 = clamp(x1, 0, canvas.width - MIN_SIZE);
-    x2 = clamp(x2, x1 + MIN_SIZE, canvas.width);
-    y1 = clamp(y1, 0, canvas.height - MIN_SIZE);
-    y2 = clamp(y2, y1 + MIN_SIZE, canvas.height);
+    x1 = clamp(x1, 0, canvas.width - minD);
+    x2 = clamp(x2, x1 + minD, canvas.width);
+    y1 = clamp(y1, 0, canvas.height - minD);
+    y2 = clamp(y2, y1 + minD, canvas.height);
     s.x = Math.round(x1); s.y = Math.round(y1);
     s.w = Math.round(x2 - x1); s.h = Math.round(y2 - y1);
     dragChanged = true;
     renderComposite();
 }
 
-/* ── Sticker operations ── */
+/* ── Shape drawing (drag to define, click for default size) ── */
+function beginShapeDraw(pos){
+    dragMode = 'shapedraw';
+    dragStart = { sx: pos.x, sy: pos.y };
+    pendingShape = null;
+}
+
+function updatePendingShape(pos){
+    const x1 = dragStart.sx, y1 = dragStart.sy, x2 = pos.x, y2 = pos.y;
+    const x = Math.min(x1, x2), y = Math.min(y1, y2);
+    const w = Math.abs(x2 - x1), h = Math.abs(y2 - y1);
+    const flip = (x2 > x1) !== (y2 > y1);
+    // preserve the drawn direction (arrow heads point where the user dragged)
+    const canon = flip ? { x: x + w, y: y } : { x: x, y: y };
+    const other = flip ? { x: x, y: y + h } : { x: x + w, y: y + h };
+    const d1 = Math.hypot(x1 - canon.x, y1 - canon.y);
+    const d2 = Math.hypot(x1 - other.x, y1 - other.y);
+    const rev = d1 > d2;
+    pendingShape = makeShape(
+        shapeKind || 'rect',
+        Math.round(x), Math.round(y),
+        Math.max(0, Math.round(w)), Math.max(0, Math.round(h)),
+        flip, rev, currentShapeStyle()
+    );
+    renderComposite();
+}
+
+function commitPendingShape(start){
+    const style = currentShapeStyle();
+    let s = pendingShape;
+    if (!s || (s.w < 8 && s.h < 8)){
+        // simple click → default-sized shape centred on the click
+        const def = Math.round(Math.min(canvas.width, canvas.height) * 0.3);
+        const cx = clamp(Math.round(start.sx - def / 2), 0, canvas.width - def);
+        const cy = clamp(Math.round(start.sy - def / 2), 0, canvas.height - def);
+        s = makeShape(shapeKind || 'rect', cx, cy, def, def, false, false, style);
+    } else if (!LINE_KINDS.has(s.kind)){
+        if (s.w < MIN_SIZE){ const c = s.x + s.w / 2; s.x = Math.round(c - MIN_SIZE / 2); s.w = MIN_SIZE; }
+        if (s.h < MIN_SIZE){ const c = s.y + s.h / 2; s.y = Math.round(c - MIN_SIZE / 2); s.h = MIN_SIZE; }
+        s.x = clamp(s.x, 0, canvas.width - s.w);
+        s.y = clamp(s.y, 0, canvas.height - s.h);
+    } else {
+        s.x = clamp(s.x, 0, Math.max(0, canvas.width - s.w));
+        s.y = clamp(s.y, 0, Math.max(0, canvas.height - s.h));
+    }
+    stickers.push(s);
+    selectSticker(s);
+    saveState();
+    updateBoardStatus();
+}
+
+/* ── Object operations (shared by stickers, text AND shapes) ── */
 function selectSticker(st){
     if (st){
         const i = stickers.indexOf(st);
         if (i >= 0 && i < stickers.length - 1){ stickers.splice(i, 1); stickers.push(st); } // bring to front
+        if (st.kind) syncShapePanelFromStyle(st.style);   // panel reflects the selected shape's style
     }
     selectedSticker = st || null;
     renderComposite();
@@ -962,14 +1394,23 @@ function removeSticker(st){
     if (i < 0) return;
     stickers.splice(i, 1);
     if (selectedSticker === st) selectedSticker = null;
+    if (editorSticker === st) editorSticker = null;
     saveState();
     renderComposite();
     updateBoardStatus();
-    showToast('Asset removed', 'info');
+    showToast('Object removed', 'info');
 }
 function updateBoardStatus(){
     const n = stickers.length;
-    sbImageCount.textContent = n ? `${n} asset${n > 1 ? 's' : ''} on board` : 'Sketch Ready';
+    if (!n){ sbImageCount.textContent = 'Sketch Ready'; return; }
+    const t = stickers.filter(s => s.textMeta).length;
+    const sh = stickers.filter(s => s.kind).length;
+    const a = n - t - sh;
+    const parts = [];
+    if (a) parts.push(a + (a > 1 ? ' assets' : ' asset'));
+    if (sh) parts.push(sh + (sh > 1 ? ' shapes' : ' shape'));
+    if (t) parts.push(t + (t > 1 ? ' texts' : ' text'));
+    sbImageCount.textContent = parts.join(' · ') + ' on board';
 }
 
 function normalizeStickerSource(img){
@@ -1071,9 +1512,397 @@ STICKER_EMOJIS.forEach(em => {
     stickerGrid.appendChild(b);
 });
 
+/* ════════════════════════════════════════════════════════════════════════
+   SHAPES & LINES PANEL
+   ════════════════════════════════════════════════════════════════════════ */
+
+const SHAPE_LIBRARY = [
+    ['line',     'Line',          '<line x1="5" y1="19" x2="19" y2="5"/>'],
+    ['arrow',    'Arrow',         '<path d="M5 19L19 5"/><path d="M12 5h7v7"/>'],
+    ['double',   'Double arrow',  '<path d="M6 18L18 6"/><path d="M11 6h7v7"/><path d="M13 18H6v-7"/>'],
+    ['dashed',   'Dashed line',   '<path d="M5 19L19 5" stroke-dasharray="3 3"/>'],
+    ['rect',     'Rectangle',     '<rect x="5" y="6" width="14" height="13"/>'],
+    ['round',    'Rounded rect',  '<rect x="5" y="6" width="14" height="13" rx="3"/>'],
+    ['ellipse',  'Ellipse / Circle', '<ellipse cx="12" cy="12.5" rx="7.5" ry="6.5"/>'],
+    ['triangle', 'Triangle',      '<path d="M12 5l8 14H4z"/>'],
+    ['diamond',  'Diamond',       '<path d="M12 4l8 8-8 8-8-8z"/>'],
+    ['hexagon',  'Hexagon',       '<path d="M8 5h8l4 7-4 7H8l-4-7z"/>'],
+    ['star',     'Star',          '<path d="M12 3l2.7 5.7 6.3.8-4.6 4.3 1.2 6.2L12 17l-5.6 3 1.2-6.2L3 9.5l6.3-.8z"/>'],
+    ['heart',    'Heart',         '<path d="M12 20s-7.5-4.8-7.5-10A4.2 4.2 0 0 1 12 7.6 4.2 4.2 0 0 1 19.5 10c0 5.2-7.5 10-7.5 10z"/>'],
+    ['bubble',   'Speech bubble', '<path d="M5 5h14v10H10l-4 4v-4H5z"/>']
+];
+
+SHAPE_LIBRARY.forEach(([kind, label, svg]) => {
+    const b = document.createElement('button');
+    b.className = 'shape-cell';
+    b.type = 'button';
+    b.dataset.kind = kind;
+    b.title = label + ' — click, then drag on the board';
+    b.innerHTML = '<svg viewBox="0 0 24 24">' + svg + '</svg>';
+    b.addEventListener('click', () => selectShapeKind(kind));
+    shapeGridEl.appendChild(b);
+});
+
+function selectShapeKind(kind){
+    shapeKind = kind;
+    shapeGridEl.querySelectorAll('.shape-cell').forEach(c => c.classList.toggle('active', c.dataset.kind === kind));
+    closePanelsExcept('shape');
+    shapePanel.classList.add('open');
+    setTool('shape');
+    updateShapesBtnState();
+}
+
+function currentShapeStyle(){
+    return {
+        stroke: shapeStrokeInput.value,
+        fill: shapeFillInput.value,
+        filled: shapeFillToggle.classList.contains('active'),
+        strokeWidth: parseInt(shapeWidthSlider.value) || 4
+    };
+}
+function syncShapePanelFromStyle(st){
+    if (!st) return;
+    shapeStrokeInput.value = st.stroke || '#111111';
+    shapeFillInput.value = st.fill || '#ffffff';
+    shapeFillToggle.classList.toggle('active', !!st.filled);
+    shapeWidthSlider.value = clamp(parseInt(st.strokeWidth) || 4, 1, 24);
+    shapeWidthVal.textContent = shapeWidthSlider.value;
+}
+/* live-restyle the selected shape from the panel */
+function applyShapeStyleToSelection(){
+    if (selectedSticker && selectedSticker.kind){
+        selectedSticker.style = currentShapeStyle();
+        renderComposite();
+        shapeStyleDirty = true;
+    }
+}
+function commitShapeStyleHistory(){
+    if (shapeStyleDirty){ saveState(); shapeStyleDirty = false; }
+}
+shapeStrokeInput.addEventListener('input', applyShapeStyleToSelection);
+shapeFillInput.addEventListener('input', applyShapeStyleToSelection);
+shapeWidthSlider.addEventListener('input', () => {
+    shapeWidthVal.textContent = shapeWidthSlider.value;
+    applyShapeStyleToSelection();
+});
+shapeStrokeInput.addEventListener('change', commitShapeStyleHistory);
+shapeFillInput.addEventListener('change', commitShapeStyleHistory);
+shapeWidthSlider.addEventListener('change', commitShapeStyleHistory);
+shapeFillToggle.addEventListener('click', () => {
+    shapeFillToggle.classList.toggle('active');
+    applyShapeStyleToSelection();
+    commitShapeStyleHistory();
+});
+
+/* ════════════════════════════════════════════════════════════════════════
+   TEXT SYSTEM (single entry point: the Text panel)
+   Text is rasterised into a canvas bitmap and placed on the board as an
+   object — exactly like stickers and shapes — so it is draggable, resizable,
+   undoable AND included in the flattened image sent to the backend.
+   Adding: Text panel / Ctrl+V paste.  Editing: double-click on the board.
+   ════════════════════════════════════════════════════════════════════════ */
+
+function currentTextStyle(){
+    return {
+        family: textFontSel.value,
+        size: parseInt(textSizeSlider.value) || 48,
+        color: textColorInput.value,
+        bold: textBoldBtn.classList.contains('active'),
+        italic: textItalicBtn.classList.contains('active')
+    };
+}
+
+/* Rasterise text (with style) to an offscreen canvas at full board resolution */
+async function renderTextBitmap(text, style){
+    const font = `${style.italic ? 'italic ' : ''}${style.bold ? '700' : '400'} ${style.size}px ${style.family}`;
+    try {
+        if (document.fonts && document.fonts.load){
+            await document.fonts.load(font, text);
+        }
+    } catch (_) { /* system fonts etc. — canvas will fall back gracefully */ }
+    const lines = text.split('\n');
+    const m = document.createElement('canvas').getContext('2d');
+    m.font = font;
+    let maxW = 0;
+    for (const l of lines) maxW = Math.max(maxW, m.measureText(l).width);
+    const lineH = Math.round(style.size * 1.3);
+    const pad = Math.max(4, Math.ceil(style.size * 0.15));
+    const c = document.createElement('canvas');
+    c.width = Math.max(2, Math.ceil(maxW) + pad * 2);
+    c.height = Math.max(2, lines.length * lineH + pad * 2);
+    const cc = c.getContext('2d');
+    cc.font = font;
+    cc.fillStyle = style.color;
+    cc.textAlign = 'left';
+    cc.textBaseline = 'middle';
+    lines.forEach((l, i) => {
+        cc.fillText(l, pad, pad + lineH * i + lineH / 2);
+    });
+    return c;
+}
+
+/* Place a pre-rendered text bitmap as a board object */
+function placeTextSticker(img, meta, x, y){
+    let w = img.width, h = img.height;
+    if (w > canvas.width || h > canvas.height){
+        const sc = Math.min(canvas.width / w, canvas.height / h);
+        w = Math.round(w * sc); h = Math.round(h * sc);
+    }
+    const px = clamp(Math.round(x), 0, canvas.width - w);
+    const py = clamp(Math.round(y), 0, canvas.height - h);
+    const st = { x: px, y: py, w, h, img, textMeta: meta };
+    stickers.push(st);
+    selectSticker(st);
+    return st;
+}
+
+/* Add a text object from a raw string (panel button / clipboard paste) */
+async function addTextObject(text, x, y){
+    text = (text || '').replace(/^\n+/, '').replace(/\s+$/, '');
+    if (!text.trim()){ showToast('Text is empty', 'warning'); return null; }
+    if (text.length > 2000){
+        text = text.slice(0, 2000);
+        showToast('Text truncated to 2000 characters', 'warning');
+    }
+    const style = currentTextStyle();
+    const img = await renderTextBitmap(text, style);
+    if (!img) return null;
+    let px = x, py = y;
+    if (px == null){
+        px = (canvas.width - img.width) / 2 + (Math.random() * 60 - 30);
+        py = (canvas.height - img.height) / 2 + (Math.random() * 60 - 30);
+    }
+    const st = placeTextSticker(img, { text, ...style }, px, py);
+    saveState();
+    updateBoardStatus();
+    renderComposite();
+    return st;
+}
+
+/* ── Inline editor (opens on double-click to EDIT existing board text) ── */
+function isEditorOpen(){ return ed.style.display !== 'none'; }
+
+function displayScale(){
+    const rect = canvas.getBoundingClientRect();
+    return (rect.width / canvas.width) || 1;
+}
+
+function fitTextEditor(){
+    // classic autosize trick: shrink, measure overflow, grow
+    ed.style.width = '10px';
+    ed.style.height = '10px';
+    const w = Math.max(70, ed.scrollWidth + 6);
+    const h = Math.max(30, ed.scrollHeight + 6);
+    ed.style.width = w + 'px';
+    ed.style.height = h + 'px';
+}
+
+function applyEditorStyle(){
+    const scale = displayScale();
+    ed.style.fontFamily = editorStyle.family;
+    ed.style.fontWeight = editorStyle.bold ? '700' : '400';
+    ed.style.fontStyle = editorStyle.italic ? 'italic' : 'normal';
+    ed.style.color = editorStyle.color;
+    ed.style.fontSize = Math.max(16, Math.round(editorStyle.size * scale)) + 'px';
+    fitTextEditor();
+}
+
+/* panel controls → live-update the open editor */
+function syncEditorStyle(){
+    if (!isEditorOpen() || !editorStyle) return;
+    editorStyle.family = textFontSel.value;
+    editorStyle.size = parseInt(textSizeSlider.value) || 48;
+    editorStyle.color = textColorInput.value;
+    editorStyle.bold = textBoldBtn.classList.contains('active');
+    editorStyle.italic = textItalicBtn.classList.contains('active');
+    applyEditorStyle();
+}
+
+/* editor style → panel controls (when editing an existing text object) */
+function syncPanelFromStyle(st){
+    for (const o of textFontSel.options){
+        if (o.value === st.family){ textFontSel.value = st.family; break; }
+    }
+    textSizeSlider.value = clamp(st.size, 12, 200);
+    textSizeVal.textContent = textSizeSlider.value;
+    textColorInput.value = st.color || '#111111';
+    textBoldBtn.classList.toggle('active', !!st.bold);
+    textItalicBtn.classList.toggle('active', !!st.italic);
+}
+
+function openTextEditor(cx, cy, sticker){
+    if (isEditorOpen()) commitTextEditor();
+    selectSticker(null);
+    const scale = displayScale();
+    editorSticker = sticker || null;
+    editorStyle = (sticker && sticker.textMeta) ? { ...sticker.textMeta } : currentTextStyle();
+    if (sticker && sticker.textMeta) syncPanelFromStyle(sticker.textMeta);
+    ed.value = sticker ? sticker.textMeta.text : '';
+    applyEditorStyle();
+    // position the editor over the canvas at the anchor point
+    const rect = canvas.getBoundingClientRect();
+    const stageRect = stage.getBoundingClientRect();
+    const ax = sticker ? sticker.x : cx;
+    const ay = sticker ? sticker.y : cy;
+    const left = (rect.left - stageRect.left) + ax * scale;
+    const top = (rect.top - stageRect.top) + ay * scale;
+    ed.style.display = 'block';
+    fitTextEditor();
+    ed.style.left = Math.max(4, Math.min(left, stage.clientWidth - ed.offsetWidth - 4)) + 'px';
+    ed.style.top = Math.max(4, Math.min(top, stage.clientHeight - ed.offsetHeight - 4)) + 'px';
+    ed.focus();
+    const len = ed.value.length;
+    try { ed.setSelectionRange(len, len); } catch (_) {}
+    renderComposite(); // hides the object being edited while its editor is open
+}
+
+function hideEditor(){
+    ed.style.display = 'none';
+    ed.value = '';
+    editorSticker = null;
+    editorStyle = null;
+}
+
+function editorCanvasPos(){
+    const rect = canvas.getBoundingClientRect();
+    const stageRect = stage.getBoundingClientRect();
+    const scale = canvas.width / rect.width;
+    return {
+        x: (ed.offsetLeft - (rect.left - stageRect.left)) * scale,
+        y: (ed.offsetTop - (rect.top - stageRect.top)) * scale
+    };
+}
+
+async function doCommitTextEditor(){
+    // capture everything synchronously BEFORE any await
+    const sticker = editorSticker;
+    const style = editorStyle ? { ...editorStyle } : currentTextStyle();
+    const raw = ed.value;
+    const anchor = editorCanvasPos();
+    hideEditor();
+    renderComposite();
+
+    const text = raw.split('\n').map(l => l.replace(/\s+$/, '')).join('\n')
+                     .replace(/^\n+/, '').replace(/\n+$/, '');
+    if (!text.trim()){
+        if (sticker) removeSticker(sticker); // emptied an existing text → remove it
+        return;
+    }
+    let img;
+    try { img = await renderTextBitmap(text, style); } catch (_) { return; }
+    if (!img) return;
+
+    if (sticker){
+        // update the existing text object in place
+        sticker.img = img;
+        sticker.textMeta = { text, ...style };
+        sticker.w = img.width;
+        sticker.h = img.height;
+        if (img.width > canvas.width || img.height > canvas.height){
+            const sc = Math.min(canvas.width / img.width, canvas.height / img.height);
+            sticker.w = Math.round(img.width * sc);
+            sticker.h = Math.round(img.height * sc);
+        }
+        selectSticker(sticker);
+    } else {
+        placeTextSticker(img, { text, ...style }, anchor.x, anchor.y);
+    }
+    saveState();
+    updateBoardStatus();
+    renderComposite();
+}
+
+function commitTextEditor(){
+    if (isEditorOpen()){
+        pendingTextCommit = doCommitTextEditor();
+    }
+    return pendingTextCommit || Promise.resolve();
+}
+
+function cancelTextEditor(){
+    if (!isEditorOpen()) return;
+    hideEditor();
+    renderComposite();
+}
+
+ed.addEventListener('input', fitTextEditor);
+
+ed.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey){
+        e.preventDefault();
+        commitTextEditor();
+    } else if (e.key === 'Escape'){
+        e.preventDefault();
+        cancelTextEditor();
+    }
+});
+
+// clicking outside the editor commits it — except when adjusting the panels
+ed.addEventListener('blur', (e) => {
+    const rt = e.relatedTarget;
+    if (rt && (textPanel.contains(rt) || stickerPanel.contains(rt) || shapePanel.contains(rt) || rt === ed)) return;
+    commitTextEditor();
+});
+
+/* ── Text panel bindings ── */
+btnTextPanel.addEventListener('click', () => {
+    const willOpen = !textPanel.classList.contains('open');
+    closePanelsExcept('text');
+    textPanel.classList.toggle('open', willOpen);
+});
+textPanelClose.addEventListener('click', () => textPanel.classList.remove('open'));
+
+textFontSel.addEventListener('change', syncEditorStyle);
+textColorInput.addEventListener('input', syncEditorStyle);
+textSizeSlider.addEventListener('input', () => {
+    textSizeVal.textContent = textSizeSlider.value;
+    syncEditorStyle();
+});
+textBoldBtn.addEventListener('click', () => { textBoldBtn.classList.toggle('active'); syncEditorStyle(); });
+textItalicBtn.addEventListener('click', () => { textItalicBtn.classList.toggle('active'); syncEditorStyle(); });
+
+textAddBtn.addEventListener('click', async () => {
+    const t = textInput.value;
+    if (!t.trim()){ showToast('Type or paste some text first', 'warning'); return; }
+    const st = await addTextObject(t, null, null);
+    if (st){
+        textInput.value = '';
+        setTool('select');
+        showToast('Text added to the board', 'info');
+    }
+});
+
+/* ── Panel management (only one floating panel open at a time) ── */
+function closePanelsExcept(name){
+    if (name !== 'sticker') stickerPanel.classList.remove('open');
+    if (name !== 'text') textPanel.classList.remove('open');
+    if (name !== 'shape') shapePanel.classList.remove('open');
+}
+function updateShapesBtnState(){
+    btnShapes.classList.toggle('active', shapePanel.classList.contains('open') || currentTool === 'shape');
+}
+
 /* ── Panel / upload / drag-drop / paste ── */
-btnStickers.addEventListener('click', () => stickerPanel.classList.toggle('open'));
+btnStickers.addEventListener('click', () => {
+    const willOpen = !stickerPanel.classList.contains('open');
+    closePanelsExcept('sticker');
+    stickerPanel.classList.toggle('open', willOpen);
+});
 panelCloseBtn.addEventListener('click', () => stickerPanel.classList.remove('open'));
+
+btnShapes.addEventListener('click', () => {
+    const willOpen = !shapePanel.classList.contains('open');
+    closePanelsExcept('shape');
+    shapePanel.classList.toggle('open', willOpen);
+    if (willOpen) selectShapeKind(shapeKind || 'rect');
+    updateShapesBtnState();
+});
+shapePanelClose.addEventListener('click', () => {
+    shapePanel.classList.remove('open');
+    updateShapesBtnState();
+});
+
 uploadBtn.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', (e) => {
     handleFiles(e.target.files);
@@ -1117,8 +1946,17 @@ stage.addEventListener('drop', (e) => {
     handleFiles(files, inside ? pos.x : null, inside ? pos.y : null);
 });
 
+/* Paste: images become stickers, plain TEXT becomes a board text object.
+   (Normal pasting into the prompt / panel / editor fields is preserved.) */
 window.addEventListener('paste', (e) => {
-    const items = (e.clipboardData && e.clipboardData.items) || [];
+    const cb = e.clipboardData;
+    if (!cb) return;
+    const active = document.activeElement;
+    const inField = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
+    if (inField) return; // let inputs receive their normal paste
+
+    // 1) pasted image files
+    const items = cb.items || [];
     const files = [];
     for (let i = 0; i < items.length; i++){
         const it = items[i];
@@ -1130,14 +1968,28 @@ window.addEventListener('paste', (e) => {
     if (files.length){
         e.preventDefault();
         handleFiles(files);
+        return;
+    }
+    // 2) pasted plain text → text object on the board
+    const text = cb.getData('text/plain');
+    if (text && text.trim()){
+        e.preventDefault();
+        addTextObject(text, null, null).then(st => {
+            if (st){
+                setTool('select');
+                showToast('Text pasted onto the board', 'info');
+            }
+        });
     }
 });
 
-/* ── History (undo/redo) — snapshots include sketch AND stickers ── */
+/* ── History (undo/redo) — snapshots include sketch, stickers, text AND shapes ── */
 function snapshot(){
     return {
         sketch: sketchCanvas.toDataURL(),
-        stickers: stickers.map(s => ({ x: s.x, y: s.y, w: s.w, h: s.h, img: s.img }))
+        stickers: stickers.map(s => s.kind
+            ? { kind: s.kind, x: s.x, y: s.y, w: s.w, h: s.h, flip: !!s.flip, rev: !!s.rev, style: { ...s.style } }
+            : { x: s.x, y: s.y, w: s.w, h: s.h, img: s.img, textMeta: s.textMeta || null })
     };
 }
 function saveState(){
@@ -1162,7 +2014,7 @@ function restoreSketch(dataUrl){
 }
 async function restoreState(snap){
     await restoreSketch(snap.sketch);
-    stickers = snap.stickers.map(s => ({ ...s }));
+    stickers = snap.stickers.map(s => s.kind ? { ...s, style: { ...s.style } } : { ...s });
     selectedSticker = null;
     renderComposite();
     updateBoardStatus();
@@ -1182,7 +2034,8 @@ btnRedo.addEventListener('click', async () => {
     }
 });
 
-/* ── Tools ── */
+/* ── Tools (brush / eraser / select / shape — the T text tool was removed;
+     text is added via the Text panel and edited via double-click) ── */
 function setTool(tool){
     currentTool = tool;
     btnSelect.classList.toggle('active', tool === 'select');
@@ -1191,6 +2044,8 @@ function setTool(tool){
     canvas.classList.toggle('cursor-select', tool === 'select');
     canvas.classList.toggle('cursor-brush', tool === 'brush');
     canvas.classList.toggle('cursor-eraser', tool === 'eraser');
+    canvas.classList.toggle('cursor-shape', tool === 'shape');
+    updateShapesBtnState();
 }
 btnSelect.addEventListener('click', () => setTool('select'));
 btnBrush.addEventListener('click', () => setTool('brush'));
@@ -1204,9 +2059,11 @@ sizeSlider.addEventListener('input', (e) => {
 });
 
 btnClear.addEventListener('click', () => {
+    cancelTextEditor();
     resetSketchLayer();
     stickers = [];
     selectedSticker = null;
+    pendingShape = null;
     saveState();
     renderComposite();
     updateBoardStatus();
@@ -1232,6 +2089,7 @@ const dims = {
 };
 
 function updateCanvasRatio(ratio){
+    cancelTextEditor();
     const [w, h] = dims[ratio];
     const oldW = canvas.width, oldH = canvas.height;
     canvas.width = w;
@@ -1239,16 +2097,20 @@ function updateCanvasRatio(ratio){
     canvas.style.aspectRatio = ratio.replace(":", " / ");
     resultImg.style.aspectRatio = ratio.replace(":", " / ");
     resetSketchLayer(); // sketch is reset on ratio change (original behaviour)
-    // carry stickers over, rescaled to the new board size
+    // carry objects over, rescaled to the new board size
     if (oldW > 0 && oldH > 0 && stickers.length){
         const sx = w / oldW, sy = h / oldH;
         stickers = stickers.map(s => {
-            const nw = Math.min(w, Math.max(24, Math.round(s.w * sx)));
-            const nh = Math.min(h, Math.max(24, Math.round(s.h * sy)));
+            const minD = s.kind ? 1 : 24;
+            const nw = Math.min(w, Math.max(minD, Math.round(s.w * sx)));
+            const nh = Math.min(h, Math.max(minD, Math.round(s.h * sy)));
+            const base = s.kind
+                ? { kind: s.kind, flip: s.flip, rev: s.rev, style: s.style }
+                : { img: s.img, textMeta: s.textMeta || null };
             return {
-                img: s.img,
-                x: clamp(Math.round(s.x * sx), 0, w - nw),
-                y: clamp(Math.round(s.y * sy), 0, h - nh),
+                ...base,
+                x: clamp(Math.round(s.x * sx), 0, Math.max(0, w - nw)),
+                y: clamp(Math.round(s.y * sy), 0, Math.max(0, h - nh)),
                 w: nw, h: nh
             };
         });
@@ -1270,6 +2132,7 @@ ratioSelect.addEventListener('change', (e) => {
 function setViewMode(mode){
     if (mode === 'result'){
         canvas.style.display = 'none';
+        ed.style.display = 'none';
         resultImg.style.display = 'block';
         segResult.classList.add('active');
         segInput.classList.remove('active');
@@ -1381,6 +2244,7 @@ resetSketchLayer();
 renderComposite();
 saveState();
 updateBoardStatus();
+updateShapesBtnState();
 
 /* ── Backend connection ── */
 let client = null;
@@ -1418,10 +2282,9 @@ async function runEdit(){
     showLoader('Submitting to queue…');
     btnDownload.disabled = true;
 
-    /* ★★★ THE FIX ★★★
-       Flatten the board before export: stickers/assets are rendered INTO the
-       canvas bitmap, so toDataURL() captures the WHOLE board (sketch + assets).
-       We only need to clear the selection overlay first. */
+    /* Commit any open text editor FIRST so its text is on the board,
+       then flatten everything (sketch + assets + text + shapes) into one PNG. */
+    await commitTextEditor();
     selectedSticker = null;
     renderComposite();
     const sketch_b64 = canvas.toDataURL('image/png');
@@ -1514,7 +2377,7 @@ document.addEventListener('keydown', (e) => {
         runEdit();
         return;
     }
-    // Delete / Backspace removes the selected asset (but never while typing)
+    // Delete / Backspace removes the selected object (but never while typing)
     if ((e.key === 'Delete' || e.key === 'Backspace') && selectedSticker){
         const tag = (document.activeElement && document.activeElement.tagName) || '';
         if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT'){
