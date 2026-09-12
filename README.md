@@ -1,4 +1,4 @@
-# **Scribble-Board-Fast**
+# **[Scribble-Board-Fast](https://huggingface.co/spaces/prithivMLmods/Scribble-Board-Fast)**
 
 Scribble-Board-Fast is an interactive, high-performance sketch-to-image synthesis workspace powered by the `black-forest-labs/FLUX.2-klein-9B` model. Built with diffusers, it takes freehand doodles, customized brush strokes, and modular visual assets (stickers/uploaded images) composited directly on an interactive canvas, transforming rough layouts into high-fidelity generative imagery in a 4-step distilled sampling window.
 
@@ -6,6 +6,7 @@ The system is deployed using a FastAPI application via `gradio.Server` hosting a
 
 <img width="1920" height="889" alt="Screenshot From 2026-09-12 15-20-20" src="https://github.com/user-attachments/assets/2d55df6f-9974-487b-8197-1868a5c9e76c" />
 
+---
 
 ```txt
 prompt/
@@ -13,6 +14,9 @@ prompt/
 3D render, octane render,
 cinema4d, soft lighting
 ```
+
+---
+
 <img width="1920" height="889" alt="Screenshot From 2026-09-12 15-22-01" src="https://github.com/user-attachments/assets/bf4c2972-95db-4dac-b9e9-43f2c9e2d85a" />
 
 ### **Key Features**
